@@ -1,233 +1,123 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>InternCruise · Group 6</title>
-<link rel="stylesheet" href="./style.css">
-<script src="./app.js" defer></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#175b56">
+  <title>InternCruise · Group 6</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./app.js" defer></script>
 </head>
+
 <body>
-<div class="stage">
-<aside>
-<div class="brand"><span>✦</span> InternCruise</div>
-<p class="eyebrow">IIMT2601 · GROUP 06</p>
-<h1>Find your next<br>starting point.</h1>
-<p class="intro">Explore internships, get answers from employers, and learn from students who have been there.</p>
-<div class="controls">
-<p class="eyebrow">CLASSROOM DEMO CONTROLS</p>
-<p class="muted">Choose how to enter the app.</p>
-<nav aria-label="Demo entry points">
-<button data-view="account"><b>01</b> New user</button>
-<button data-role="seeker" data-view="home"><b>02</b> Internship seekers</button>
-<button data-role="employer" data-view="home"><b>03</b> Internship providers</button>
-</nav>
-</div>
-<div class="demo-footer">
-<p class="muted">Interactive prototype · Simulated data only</p>
-<button id="resetDemo" class="secondary">Reset demo ↺</button>
-</div>
-<dialog id="resetDialog" aria-labelledby="resetTitle">
-<h2 id="resetTitle">Reset the demo?</h2>
-<p>This clears your demo activity and brings back the original sample posts and listings.</p>
-<p id="resetError" role="alert"></p>
-<form method="dialog">
-<button class="secondary" autofocus>Cancel</button>
-<button type="button" id="confirmReset">Reset demo</button>
-</form>
-</dialog>
-</aside>
-<div class="phone" aria-label="Interactive phone prototype">
-<div class="statusbar" aria-hidden="true"><span>9:41</span><span>●●● &nbsp; Wi-Fi ▰</span></div>
-<header><strong>✦ InternCruise</strong><span id="roleBadge">DEMO</span></header>
-<main>
-<section id="welcome">
-<p class="eyebrow">YOUR INTERNSHIP JOURNEY</p>
-<h1>Know where<br>you’re headed.</h1>
-<p>Discover roles, hear from past interns, and get answers before you apply.</p>
-<div class="hero-art" aria-hidden="true"><span>✦</span><b>↗</b><i>✧</i></div>
-<button class="wide" data-view="account">Get started →</button>
-</section>
-<section id="account" hidden>
-<p class="eyebrow">GET STARTED</p><h1>Do you already have an account?</h1>
-<button class="wide" data-view="login">Yes, log in</button>
-<button class="wide secondary" data-view="signup">No, sign up</button>
-</section>
-<section id="signup" hidden>
-<button class="secondary" data-view="account">← Back</button><h1>Sign up</h1>
-<form class="card" id="signupForm">
-<label>Username, email or phone<input name="account" required autocomplete="off"></label>
-<label>Demo password<input name="password" type="password" required autocomplete="new-password"></label>
-<p class="muted">Use made-up account details for this demo.</p>
-<p id="signupNote" role="status"></p><button>Create account</button>
-</form>
-</section>
-<section id="login" hidden>
-<button class="secondary" data-view="account">← Back</button><h1>Log in</h1>
-<form class="card" id="loginForm">
-<label>Username, email or phone<input name="account" required autocomplete="off"></label>
-<label>Password<input name="password" type="password" required autocomplete="off"></label>
-<p class="muted">Try the demo account: <b>demo</b> / <b>cruise</b></p>
-<p id="loginNote" role="status"></p><button>Log in</button>
-</form>
-</section>
-<section id="verify" hidden>
-<p class="eyebrow">IDENTITY VERIFICATION</p><h1>Verify your identity</h1>
-<form class="card" id="verifyForm">
-<label>Identity type<select name="identity"><option>Student</option><option>Alumni</option><option>Company employee</option></select></label>
-<label>Proof to submit<select name="proof"><option value="valid">Valid sample document</option><option value="invalid">Invalid sample document</option></select></label>
-<p class="muted">Choose a sample to simulate uploading proof.</p>
-<p id="verifyNote" role="status"></p><button>Submit proof</button>
-</form>
-</section>
-<section id="profile" hidden>
-<p class="eyebrow">YOUR ACCOUNT</p><h1>Profile</h1>
-<div class="card"><h2 id="profileName"></h2><p id="profileIdentity"></p><button id="profileWorkspace" data-view="employer" hidden>Employer Workspace</button></div>
-</section>
-<section id="forum" hidden>
-<div class="forum-heading"><h1>Forum</h1><button data-view="forumCompose">＋ Post</button></div>
-<p class="muted">Campus life, internships, and everything in between.</p>
-<div id="forumThreads"></div>
-</section>
-<section id="forumCompose" hidden>
-<button class="secondary" data-view="forum">← Forum</button>
-<h1>New forum post</h1>
-<form id="forumPost" class="card">
-<label>Title<input name="title" required maxlength="120"></label>
-<label>What’s on your mind?<textarea name="message" rows="4" required maxlength="2000"></textarea></label>
-<label class="school-filter"><input name="anonymous" type="checkbox"> Post anonymously</label>
-<button>Publish post</button>
-</form>
-</section>
-<section id="forumDetail" hidden>
-<button class="secondary" data-view="forum">← Forum</button>
-<div class="card">
-<h1 id="forumTitle"></h1>
-<button class="author-link" id="forumPoster"></button>
-<p id="forumBody" class="forum-text"></p>
-</div>
-<h2 id="forumCommentCount"></h2>
-<div id="forumComments"></div>
-<form id="forumComment" class="card">
-<label>Leave a comment<textarea name="message" rows="2" required maxlength="2000"></textarea></label>
-<label class="school-filter"><input name="anonymous" type="checkbox"> Comment anonymously</label>
-<button>Post comment</button>
-</form>
-</section>
-<section id="forumProfile" hidden>
-<button class="secondary" data-view="forumDetail">← Back to post</button>
-<h1 id="forumProfileName"></h1>
-<p class="muted" id="forumProfileCount"></p>
-<div id="forumContact">
-<label class="school-filter"><input id="anonymousMessage" type="checkbox"> Message anonymously</label>
-<button id="messageForumAuthor">Message</button>
-</div>
-<div id="forumProfilePosts"></div>
-</section>
-<section id="home" hidden aria-label="Home feed">
-<div class="feed-toolbar">
-<input id="feedSearch" type="search" placeholder="Search company or job" aria-label="Search company or job">
-<button data-view="compose" aria-label="Create a post">＋ Post</button>
-</div>
-<nav class="feed-tabs" aria-label="Post feeds">
-<button data-feed="experience">Experience Share</button>
-<button data-feed="official">Official Posts</button>
-</nav>
-<details id="experienceFilters" class="experience-filters">
-<summary>Filters <span id="filterCount"></span></summary>
-<div class="filter-options">
-<label id="schoolFilterRow" class="school-filter"><input id="sameSchool" type="checkbox"> Same school (HKU demo)</label>
-<label id="durationFilterRow" hidden>Duration<select id="durationFilter"><option value="">Any duration</option></select></label>
-<label>Job title<select id="jobFilter"><option value="">All jobs</option></select></label>
-<label>Company<select id="companyFilter"><option value="">All companies</option></select></label>
-<button id="clearFeedFilters" class="secondary">Clear filters</button>
-</div>
-</details>
-<p id="feedEmpty" class="muted" role="status" hidden>No posts match your search or filters.</p>
-<div id="feedGrid" class="feed-grid"></div>
-</section>
-<section id="compose" hidden>
-<button class="secondary" data-view="home">← Back to feed</button>
-<h1>Create a post</h1>
-<p id="postDestination" class="muted"></p>
-<form class="card" id="composeForm">
-<label>Company<input name="company" required maxlength="80"></label>
-<label>Job title<input name="job" required maxlength="80"></label>
-<label id="postDurationRow" hidden>Internship duration (weeks)<input type="number" name="duration" min="1" max="104" step="1" disabled></label>
-<label>Post title<input name="title" required maxlength="120"></label>
-<label>Post content<textarea name="body" required rows="4" maxlength="2000"></textarea></label>
-<p id="composeNote" role="status"></p>
-<button>Publish post</button>
-</form>
-</section>
-<section id="post" hidden>
-<button class="secondary" data-view="home">← Back to feed</button>
-<div id="postContent"></div>
-<div class="card" id="reviews" hidden><h2>Internship reviews</h2><p>★★★★★ · Example review</p><p>“My mentor gave feedback every week.”</p></div>
-<h2>Comments &amp; Q&amp;A</h2>
-<p class="muted" id="postContext"></p>
-<form class="card" id="postQuestion">
-<label>Ask about this role<textarea name="message" rows="2" required></textarea></label>
-<button>Post question</button>
-</form>
-<div id="postThreads"></div>
-</section>
-<section id="employer" hidden>
-<p class="eyebrow">EMPLOYER WORKSPACE</p><h1>Harbour Studio</h1>
-<div class="card"><h2>Product Design Intern</h2><p id="status" role="status"></p>
-<button data-view="edit" id="editButton">Request to edit</button>
-<div id="reviewActions" hidden><p id="pendingText"></p><button id="approve">Approve & publish</button> <button id="reject" class="secondary">Reject update</button><p class="muted">Simulate the platform’s review decision.</p></div></div>
-<div class="card"><h2>Private inquiries</h2><p id="inboxStatus"></p><button data-view="inbox">Open conversation</button></div>
-</section>
-<section id="edit" hidden>
-<button class="secondary" data-view="employer">← Employer workspace</button>
-<p class="eyebrow">EDIT ACCESS APPROVED</p><h1>Edit internship</h1>
-<form id="updateForm" class="card"><label>Job description<textarea id="draft" required rows="5"></textarea></label><button>Submit for review</button></form>
-</section>
-<section id="authorProfile" hidden>
-<button class="secondary" data-view="post">← Back to post</button>
-<h1 id="authorName"></h1>
-<p class="muted" id="authorPostCount"></p>
-<button id="messageAuthor">Message</button>
-<div id="authorPosts" class="feed-grid"></div>
-</section>
-<section id="messages" hidden>
-<p class="eyebrow">PRIVATE MESSAGES</p><h1>Messages <span id="conversationCount" class="conversation-count"></span></h1>
-<div id="conversationList"></div>
-</section>
-<section id="conversation" hidden>
-<div class="chat-heading">
-<button type="button" data-view="messages" aria-label="Back to Messages">‹</button>
-<h1 id="conversationName"></h1>
-</div>
-<p id="chatAlias" class="chat-alias" hidden></p>
-<div id="conversationMessages" class="chat-stream" role="log" aria-label="Conversation"></div>
-<form id="directMessageForm" class="chat-composer">
-<input id="directMessageInput" name="message" type="text" required maxlength="2000" autocomplete="off" enterkeyhint="send" placeholder="Send a message" aria-label="Message">
-<button type="submit">Send</button>
-</form>
-<div id="chatKeyboard" class="chat-keyboard" role="group" aria-label="Demo keyboard" hidden></div>
-</section>
-<section id="chat" hidden>
-<button class="secondary" data-view="messages">← Messages</button>
-<p class="eyebrow">PRIVATE INQUIRY</p><h1>Chat with Harbour Studio</h1>
-<div id="seekerMessages" class="chat-stream" aria-live="polite"></div>
-<form id="questionForm" class="card"><label>Your question<textarea required rows="2" placeholder="Can I start in June?"></textarea></label><button>Send question</button> <button type="button" id="resolve" class="secondary">Mark as resolved</button></form>
-</section>
-<section id="inbox" hidden>
-<button class="secondary" data-view="messages">← Messages</button>
-<p class="eyebrow">PRIVATE INQUIRY</p><h1>Chat with the applicant</h1>
-<div id="employerMessages" class="chat-stream" aria-live="polite"></div>
-<form id="replyForm" class="card"><label>Your reply<textarea required rows="2" placeholder="Yes, we can accommodate a June start."></textarea></label><button>Send reply</button></form>
-</section>
-</main>
-<nav id="appMenu" class="app-menu" aria-label="App navigation" hidden>
-<button data-tab="home"><span aria-hidden="true">⌂</span>Home</button>
-<button data-tab="forum"><span aria-hidden="true">☷</span>Forum</button>
-<button data-tab="messages"><span aria-hidden="true">✉</span>Messages</button>
-<button data-tab="profile"><span aria-hidden="true">◎</span>Profile</button>
-</nav>
-<div class="homebar" aria-hidden="true"></div>
-</div>
-</div>
-</body></html>
+  <div class="stage">
+    <aside>
+      <div class="brand"><span>✦</span> InternCruise</div>
+      <p class="eyebrow">IIMT2601 · GROUP 06</p>
+      <h1>Find your next<br>starting point.</h1>
+      <p class="intro">
+        Explore internships, get answers from employers,
+        and learn from students who have been there.
+      </p>
+
+      <section class="controls" aria-labelledby="controlsTitle">
+        <h2 id="controlsTitle" class="eyebrow">
+          Classroom demo controls
+        </h2>
+        <p>Choose an entry point. Changes stay in this browser.</p>
+
+        <nav aria-label="Classroom entry points">
+          <button type="button" data-action="entry">
+            <b>01</b> New user
+          </button>
+          <button type="button" data-action="demo" data-id="u-seeker">
+            <b>02</b> Internship seeker
+          </button>
+          <button type="button" data-action="demo" data-id="u-sharer">
+            <b>03</b> Experience sharer
+          </button>
+          <button type="button" data-action="demo" data-id="u-provider">
+            <b>04</b> Internship provider
+          </button>
+        </nav>
+
+        <hr>
+
+        <button class="secondary wide" type="button"
+                data-action="simulator">
+          Platform review simulator
+        </button>
+        <p class="muted">
+          Presenter control—not an employer permission.
+          Approve or reject edit access and listing submissions here.
+        </p>
+
+        <div class="demo-footer">
+          <p class="muted">Interactive prototype · Simulated data only</p>
+          <button class="secondary" type="button" data-action="reset">
+            Reset demo ↺
+          </button>
+        </div>
+      </section>
+
+      <p class="muted">
+        No real authentication, document uploads, notifications,
+        or communication with external users.
+        Use made-up details only.
+      </p>
+      <p id="storageWarning" class="warning" role="status"></p>
+    </aside>
+
+    <section class="phone" aria-label="InternCruise app preview">
+      <div class="statusbar" aria-hidden="true">
+        <span>9:41</span>
+        <span>●●● Wi-Fi ▰</span>
+      </div>
+
+      <header class="app-header">
+        <strong>✦ InternCruise</strong>
+        <div class="header-actions">
+          <span id="roleBadge" class="badge">DEMO</span>
+          <button id="notificationButton" class="icon-button"
+                  type="button" data-action="notifications"
+                  aria-label="Notifications" hidden>
+            ♧ <span id="notificationCount">0</span>
+          </button>
+        </div>
+      </header>
+
+      <p id="notice" class="notice" role="status" hidden></p>
+
+      <main id="screen" tabindex="-1"></main>
+
+      <nav id="appMenu" class="app-menu" aria-label="Main navigation" hidden>
+        <button type="button" data-action="tab" data-id="home">
+          <span aria-hidden="true">⌂</span>Home
+        </button>
+        <button type="button" data-action="tab" data-id="forum">
+          <span aria-hidden="true">☷</span>Forum
+        </button>
+        <button type="button" data-action="tab" data-id="messages">
+          <span aria-hidden="true">✉</span>Messages
+        </button>
+        <button type="button" data-action="tab" data-id="profile">
+          <span aria-hidden="true">◎</span>Profile
+        </button>
+      </nav>
+
+      <div class="homebar" aria-hidden="true"></div>
+    </section>
+  </div>
+
+  <dialog id="confirmDialog" aria-labelledby="confirmTitle">
+    <h2 id="confirmTitle">Please confirm</h2>
+    <p id="confirmText"></p>
+    <form method="dialog" class="row">
+      <button class="secondary" value="cancel">Cancel</button>
+      <button id="confirmButton" value="confirm">Continue</button>
+    </form>
+  </dialog>
+
+  <noscript>This interactive prototype requires JavaScript.</noscript>
+</body>
+</html>
