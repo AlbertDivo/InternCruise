@@ -1575,8 +1575,31 @@ document.addEventListener("submit", async (event) => {
     if (!source?.live || source.type !== "official") {
       return fail("Select a published internship.");
     }
-    dirty = false;
-    return go("experience", { source: source.id, proofPassed: true });
+    me().experiences ??= [];
+
+   let experience = me().experiences.find(item => item.source === source.id);
+
+   const verifiedDetails = {
+     source: source.id,
+     verified: true,
+     position: source.live.job,
+     employer: source.live.company,
+     time: `Sample internship · ${source.live.duration} weeks`,
+     description: "Sample verified internship experience. You can edit these details in Me."
+   };
+
+if (experience) {
+  Object.assign(experience, verifiedDetails);
+} else {
+  me().experiences.push({
+    id: uid(),
+    ...verifiedDetails
+  });
+}
+
+persist();
+dirty = false;
+return go("experience", { source: source.id, proofPassed: true });
   }
 
   if (type === "experience") {
