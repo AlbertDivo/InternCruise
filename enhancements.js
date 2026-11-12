@@ -239,6 +239,8 @@
       }
     }
 
+    addPostSamples();
+
     for (const user of db.users) {
       user.firstName ??= user.name.split(" ")[0];
       user.lastName ??= user.name.split(" ").slice(1).join(" ");
@@ -259,6 +261,56 @@
       forum.replies ??= [];
       prepareItems(forum.replies);
     }
+  }
+
+  function addPostSamples() {
+    if (db.postsDemoSamples) return;
+    const examples = [
+      ["design-research", "u-sharer", "p-harbour", "Interviewing users taught me more than polishing screens", "My first week at Harbour Studio was all about UX research. I learned to ask open questions, take useful notes and turn interviews into a clear design decision.", 12, 5, 86],
+      ["design-portfolio", "u-sharer", "p-harbour", "Three things I added to my design portfolio", "A problem statement, an early prototype and one decision I changed after feedback. At Harbour Studio, explaining my thinking mattered more than making every slide look perfect.", 22, 9, 143],
+      ["design-feedback", "u-maya", "p-harbour", "How I asked for feedback without feeling awkward", "I started bringing two specific questions to each mentor meeting. During my product design internship at Harbour Studio, that made feedback much easier to act on.", 7, 3, 41],
+      ["data-sql", "u-ryan", "p-orbit", "My first SQL task was not what I expected", "At Orbit Analytics I spent more time checking missing values than building dashboards. SQL joins and a simple Excel checklist helped me catch mistakes before presenting results.", 31, 12, 219],
+      ["data-teamwork", "u-maya", "p-orbit", "A business student can contribute to a data team", "I translated a business question into a dashboard brief at Orbit Analytics. Clear communication and Excel were useful even before I became confident with SQL.", 16, 8, 104],
+      ["data-anonymous", "u-ryan", "p-orbit", "What I wish I had asked about overtime", "Before accepting a data internship, ask how deadlines are set and who you can speak to when tasks pile up. My experience at Orbit Analytics taught me to ask early rather than assume.", 45, 17, 308, true],
+      ["marketing-campaign", "u-maya", "sample-marketing", "From lecture theories to my first marketing campaign", "At Harbour Studio I helped plan a social media campaign, write a content calendar and compare results in Excel. My biggest lesson was to test one message at a time.", 19, 11, 128],
+      ["marketing-anonymous", "u-sharer", "sample-marketing", "A small team meant I had to learn fast", "My marketing internship at Harbour Studio involved writing copy, presenting ideas and asking for help. The first presentation was scary, but weekly feedback made a real difference.", 9, 4, 65, true],
+      ["software-testing", "u-ryan", "sample-software", "The bug that taught me to write a test first", "During my software internship at Orbit Analytics, I reproduced a broken search filter before changing the code. A tiny test saved us from breaking the same feature twice.", 28, 14, 186],
+      ["operations-excel", "u-maya", "sample-operations", "One spreadsheet saved our team hours each week", "In operations at Harbour Studio, I organised incoming requests in Excel and documented the handover. A clear process was more useful than a complicated tool.", 11, 6, 72]
+    ];
+    const listings = [
+      ["sample-marketing", "u-provider", "Harbour Studio", "Marketing Intern", 8, "Build your first campaign with our team", "Plan social media content, research audiences and report campaign results. A mentor will help you develop your ideas and presentation skills.", "Communication, writing and basic Excel skills.", "Hybrid", 65, ["Business", "Marketing"], ["Communication", "Excel"]],
+      ["sample-software", "u-orbit", "Orbit Analytics", "Software Engineering Intern", 12, "Help build tools that make data useful", "Work on search interfaces, fix small bugs and write tests with our engineering team. Bring curiosity and a small programming project.", "Basic JavaScript or Python and an interest in testing.", "Hybrid", 95, ["Computer Science"], ["JavaScript", "Python"]],
+      ["sample-operations", "u-provider", "Harbour Studio", "Operations Intern", 4, "Make everyday teamwork run more smoothly", "Organise project information, improve handover checklists and support scheduling. This short internship is ideal for someone who enjoys clear communication.", "Organisation, communication and spreadsheet skills.", "Offline", 60, ["Business"], ["Excel", "Communication"]],
+      ["sample-finance", "u-orbit", "Orbit Analytics", "Finance Intern", 10, "Explore the numbers behind a growing business", "Support budget tracking, prepare simple reports and help the finance team understand monthly costs. Learn how a business turns records into decisions.", "Basic accounting knowledge and confidence with Excel.", "Remote", 80, ["Business", "Accounting"], ["Excel", "Accounting"]]
+    ];
+    listings.forEach(([id, owner, company, job, duration, title, body, requirements, arrangement, pay, fields, skills], index) => {
+      if (getPost(id)) return;
+      db.posts.push({
+        id, owner, type: "official", anonymous: false,
+        live: { company, job, duration, title, body, requirements,
+          location: "Hong Kong", pay: `HK$${pay}/hour · Sample figure`, deadline: "" },
+        draft: null, review: "live", access: "none", reason: "", closed: false,
+        likes: [], sampleLikes: 6 + index * 4, sampleFavorites: 2 + index,
+        views: 40 + index * 23, questions: [],
+        created: new Date(Date.UTC(2026, 10, 11 - index, 8)).toISOString()
+      });
+      const post = prepareJob(getPost(id));
+      Object.assign(post.jobMeta, { arrangement, payMin: pay, payMax: pay, fields, skills });
+    });
+    examples.forEach(([key, owner, source, title, body, likes, saves, views, anonymous = false], index) => {
+      const id = `sample-post-${key}`;
+      if (getPost(id)) return;
+      const listing = getPost(source).live;
+      const user = getUser(owner);
+      db.posts.push({
+        id, owner, source, type: "experience", anonymous, certificate: true,
+        live: { title, body, company: listing.company, job: listing.job,
+          duration: listing.duration, school: user.org, major: user.major },
+        likes: [], sampleLikes: likes, sampleFavorites: saves, views, questions: [],
+        created: new Date(Date.UTC(2026, 10, 12 - index, 7)).toISOString()
+      });
+    });
+    db.postsDemoSamples = true;
   }
 
   function prepareItems(items) {
@@ -367,20 +419,30 @@
   // All employers in this fictional sample are registered.
   // Real unregistered-company logos would need licensed image URLs.
 
+  function currentNavigationTab() {
+    const isAuthorProfile = page => page.name === "profile" &&
+      page.actor && page.actor !== currentUserId;
+    // Author profiles belong to the section they were opened from, not Me.
+    const page = isAuthorProfile(route)
+      ? [...navigation].reverse().find(entry => !isAuthorProfile(entry)) || { name: "posts" }
+      : route;
+    return page.name.startsWith("forum") || page.name === "hashtag"
+      ? "forum"
+      : ["internships", "comparisons", "internship", "review", "internship-proof"].includes(page.name)
+        ? "internships"
+        : ["posts", "create", "experience", "post"].includes(page.name)
+          ? "posts"
+          : ["profile", "edit-profile", "favorites", "profile-item", "resume", "workspace", "listing"].includes(page.name)
+            ? "profile" : "home";
+  }
+
   const originalRender = render;
 
   render = function () {
     migrate();
     originalRender();
 
-    const tab = route.name.startsWith("forum") || route.name === "hashtag"
-      ? "forum"
-      : ["internships", "comparisons", "internship", "review", "internship-proof"].includes(route.name)
-        ? "internships"
-        : ["posts", "create", "experience", "post"].includes(route.name)
-          ? "posts"
-          : ["profile", "edit-profile", "favorites", "profile-item", "resume", "workspace", "listing"].includes(route.name)
-            ? "profile" : "home";
+    const tab = currentNavigationTab();
 
     document.querySelectorAll('#appMenu [data-action="tab"]').forEach(element => {
       if (element.dataset.id === tab) element.setAttribute("aria-current", "page");
@@ -437,15 +499,39 @@
   modal.id = "expandedDialog";
   document.body.append(modal);
 
+  function positionPhoneFilters() {
+    if (!modal.open || !modal.classList.contains("ic-filter-dialog")) return;
+    const phone = document.querySelector(".phone");
+    const bounds = phone.getBoundingClientRect();
+    modal.style.left = `${bounds.left + phone.clientLeft}px`;
+    modal.style.top = `${bounds.top + phone.clientTop}px`;
+    modal.style.width = `${phone.clientWidth}px`;
+    modal.style.height = `${phone.clientHeight}px`;
+  }
+
+  const filterResize = new ResizeObserver(positionPhoneFilters);
+  modal.addEventListener("close", () => {
+    filterResize.disconnect();
+    window.removeEventListener("scroll", positionPhoneFilters, true);
+    window.removeEventListener("resize", positionPhoneFilters);
+    modal.removeAttribute("style");
+  });
+
   function showModal(title, content, className = "") {
     modal.className = className;
     modal.setAttribute("aria-label", title);
-    modal.innerHTML = `<div class="${className ? "" : "stack"}">
+    modal.innerHTML = `<div class="${className === "ic-filter-dialog" ? "ic-filter-panel" : className ? "" : "stack"}">
       ${className ? "" : `<div class="row between"><h2>${esc(title)}</h2>
         ${xb("×", "close-modal", "", "secondary", 'aria-label="Close dialog"')}</div>`}
       ${content}
     </div>`;
     if (!modal.open) modal.showModal();
+    if (className === "ic-filter-dialog") {
+      positionPhoneFilters();
+      filterResize.observe(document.querySelector(".phone"));
+      window.addEventListener("scroll", positionPhoneFilters, true);
+      window.addEventListener("resize", positionPhoneFilters);
+    }
   }
 
   function closeModal() {
@@ -470,7 +556,80 @@
     </section>`;
 
   // Preserve the previous feed, but move it to Posts.
-  pages.posts = homePage;
+  let postsMode = "recommended";
+  let postsQuery = "";
+
+  function postsForFeed() {
+    const query = postsQuery.toLowerCase();
+    const posts = db.posts.filter(post => post.live && post.type === filters.type &&
+      [post.live.title, post.live.body, post.live.company, post.live.job, authorName(post)]
+        .some(value => String(value || "").toLowerCase().includes(query)));
+    if (postsMode === "all") {
+      return posts.sort((a, b) => String(b.created).localeCompare(String(a.created)));
+    }
+    return rank(posts, "post").sort((a, b) =>
+      Number(relatedPerson(b.owner, b.anonymous)) - Number(relatedPerson(a.owner, a.anonymous)));
+  }
+
+  function socialPostCard(post) {
+    const data = post.live;
+    const user = post.anonymous ? null : getUser(post.owner);
+    const connected = relatedPerson(post.owner, post.anonymous);
+    const reference = `post||${post.id}`;
+    return `<article class="card ic-social-post">
+      <header class="ic-social-author">
+        ${avatar(user)}
+        <div>${authorButton(post)}
+          <p class="muted">${esc(post.anonymous ? "Anonymous community member" : user?.headline || user?.org || "Community member")}</p>
+          <p class="muted">${esc(dateLabel(post.created))} · ${post.type === "official" ? "Official post" : "Experience share"}</p>
+        </div>
+      </header>
+      ${postsMode === "recommended" && connected
+        ? '<p class="ic-social-connection">Recommended · Alumni / same major</p>' : ""}
+      <h2>${esc(data.title)}</h2>
+      <p class="preserve ic-social-body">${esc(data.body)}</p>
+      <p class="ic-social-context">${esc(data.company)} · ${esc(data.job)}${data.duration ? ` · ${esc(data.duration)} weeks` : ""}</p>
+      ${post.closed ? '<p class="badge">Applications closed</p>' : ""}
+      <footer class="ic-social-actions">
+        ${xb(`♡ ${likesOf(post)}`, "like", reference, "secondary",
+          `aria-label="Like post" aria-pressed="${post.likes?.includes(currentUserId) || false}"`)}
+        ${xb(`${isFavorite("post", post.id) ? "★ Saved" : "☆ Save"} · ${favoriteCount("post", post)}`,
+          "favorite", reference, "secondary",
+          `aria-label="Save post" aria-pressed="${isFavorite("post", post.id)}"`)}
+        ${xb("Read & discuss →", "post-open", post.id, "link-button")}
+      </footer>
+    </article>`;
+  }
+
+  pages.posts = () => {
+    const posts = postsForFeed();
+    return `<div class="row between ic-social-heading"><h1>Posts</h1>
+        ${button("＋ Post", "create")}</div>
+      <nav class="ic-post-categories" aria-label="Post category">
+        ${xb("Experience Share", "posts-category", "experience", "secondary",
+          `aria-pressed="${filters.type === "experience"}"`)}
+        ${xb("Official Posts", "posts-category", "official", "secondary",
+          `aria-pressed="${filters.type === "official"}"`)}
+      </nav>
+      <nav class="ic-post-order" aria-label="${filters.type === "experience" ? "Experience Share" : "Official Posts"} options">
+        ${xb("Recommended for you", "posts-mode", "recommended", "secondary",
+          `aria-pressed="${postsMode === "recommended"}"`)}
+        ${xb("All posts", "posts-mode", "all", "secondary",
+          `aria-pressed="${postsMode === "all"}"`)}
+      </nav>
+      <form data-form="x-posts-search" class="ic-social-search" role="search">
+        ${field("Search posts", "query", postsQuery, "search", false,
+          'placeholder="Search stories, companies, roles or authors"')}
+        <div class="row"><button>Search</button>${xb("Clear", "posts-clear")}</div>
+      </form>
+      <p class="muted">${postsMode === "recommended"
+        ? "Your connections first, then likes, saves & views."
+        : "Latest posts first."}</p>
+      <p class="muted">Fictional demo posts and interaction counts.</p>
+      <p class="muted" role="status">${posts.length} ${posts.length === 1 ? "post" : "posts"}</p>
+      <div class="ic-social-feed">${posts.map(socialPostCard).join("") ||
+        '<p class="empty">No posts found. Try another search or category.</p>'}</div>`;
+  };
 
   const oldMessagesPage = messagesPage;
   const oldNotificationsPage = notificationsPage;
@@ -628,6 +787,7 @@
   function findItem(reference) {
     const [kind, parent, id] = reference.split("|");
     let item;
+    if (kind === "post") item = getPost(id);
     if (kind === "forum") item = getForum(id);
     if (kind === "forum-reply") item = getForum(parent)?.replies.find(r => r.id === id);
     if (kind === "review") item = getPost(parent)?.reviews.find(r => r.id === id);
@@ -700,6 +860,7 @@
   };
 
   pages.favorites = () => {
+    const posts = db.posts.filter(post => post.live && isFavorite("post", post.id));
     const forums = db.forums.filter(post => isFavorite("forum", post.id));
     const comments = [];
 
@@ -720,6 +881,8 @@
     }
 
     return `${heading("Favorites")}
+      <h2>Posts (${posts.length})</h2>
+      ${posts.map(socialPostCard).join("") || '<p class="muted">No saved posts yet. Save a post from Posts to find it here.</p>'}
       <h2>Forum posts (${forums.length})</h2>
       ${forums.map(expandedForumCard).join("") || '<p class="muted">No favorite forum posts yet.</p>'}
       <h2>Comments (${comments.length})</h2>
@@ -837,6 +1000,45 @@
     const title = anonymous ? user.alias :
       user.kind === "provider" ? user.org : fullName(user);
 
+    if (user.kind === "provider" && !anonymous) {
+      const listings = db.posts.filter(post => post.type === "official" && post.owner === user.id);
+      const published = listings.filter(post => post.live);
+      const inquiries = own ? db.chats.filter(chat =>
+        chat.context.startsWith("listing:") &&
+        chat.participants.some(person => actorOwner(person) === user.id)) : [];
+      return `${own ? "" : button("← Back", "back", "", "link-button")}
+        <section class="card">
+          <div class="profile-top">${avatar(user)}<div>
+            <h1>${esc(user.org)}</h1><span class="badge">Company employee · Demo verified</span>
+          </div></div>
+          <p><strong>${esc(user.headline || "")}</strong></p>
+          <h2>About the company</h2>
+          <p class="preserve">${esc(user.bio || "No company introduction yet.")}</p>
+          <h2>Company contact</h2>
+          <dl class="meta">
+            <dt>Contact person</dt><dd>${esc(fullName(user))}</dd>
+            <dt>Department</dt><dd>${esc(user.major || "Not added")}</dd>
+            <dt>Location</dt><dd>${esc(user.location || "Not added")}</dd>
+          </dl>
+          ${own ? button("Edit company profile", "edit-profile", "", "wide")
+            : button("Message company", "message-actor", person, "wide")}
+        </section>
+        ${own ? `<section class="card stack">
+          <h2>Internship management</h2>
+          <p class="muted">${published.filter(post => !post.closed).length} open · ${published.filter(post => post.closed).length} closed · ${listings.filter(post => post.review === "pending").length} awaiting review</p>
+          ${button("Manage internship listings →", "workspace", "", "wide")}
+          ${xb("Messages & notifications", "navigate", "inbox", "secondary wide")}
+          ${xb("Favorites", "navigate", "favorites", "secondary wide")}
+          ${button("Log out", "logout", "", "secondary wide")}
+        </section>
+        <section class="card">
+          <h2>Internship inquiries (${inquiries.length})</h2>
+          ${inquiries.map(chatRow).join("") || '<p class="muted">No internship inquiries yet. Questions sent from a listing will appear here.</p>'}
+        </section>` : ""}
+        <h2>Published internships (${published.length})</h2>
+        ${postGrid(published)}`;
+    }
+
     return `${own ? "" : button("← Back", "back", "", "link-button")}
       <section class="card">
         <div class="profile-top">
@@ -896,18 +1098,20 @@
 
   pages["edit-profile"] = () => {
     const user = me();
-    return `${heading("Edit profile")}
+    return `${heading(user.kind === "provider" ? "Edit company profile" : "Edit profile")}
       <div class="ic-avatar-wrap">${avatar(user)}<span class="ic-pen">${icon("pen")}</span></div>
       <label>Change profile picture
         <input id="profilePhoto" type="file" accept="image/png,image/jpeg,image/webp">
       </label>
       <p class="muted">Stored only in this browser. Choose a non-sensitive sample image.</p>
       <form data-form="x-profile" data-dirty>
-        ${field("First Name", "firstName", user.firstName)}
-        ${field("Last Name", "lastName", user.lastName, "text", false)}
+        ${field(user.kind === "provider" ? "Contact first name" : "First Name", "firstName", user.firstName)}
+        ${field(user.kind === "provider" ? "Contact last name" : "Last Name", "lastName", user.lastName, "text", false)}
         ${field("Additional/Preferred Name", "preferredName", user.preferredName, "text", false)}
         ${field("Headline", "headline", user.headline, "text", false)}
-        ${field(user.kind === "provider" ? "Company" : "School", "org", user.org)}
+        ${field(user.kind === "provider" ? "Verified company" : "School", "org", user.org, "text", true,
+          user.kind === "provider" ? "readonly" : "")}
+        ${user.kind === "provider" ? '<p class="muted">Company name is linked to your verified identity and listings. Changing it requires re-verification; this demo keeps it fixed.</p>' : ""}
         ${field(user.kind === "provider" ? "Department" : "Major", "major", user.major, "text", false)}
         ${user.kind === "participant" ? `
           ${selectField("Undergraduate / Postgraduate", "degree", ["Undergraduate", "Postgraduate"], user.degree)}
@@ -915,13 +1119,13 @@
           ${field("Year of Graduation", "graduation", user.graduation, "number", false, 'min="1950" max="2100"')}
         ` : ""}
         ${field("Location", "location", user.location, "text", false)}
-        ${area("About", "bio", user.bio, false, 1200)}
+        ${area(user.kind === "provider" ? "About the company" : "About", "bio", user.bio, false, 1200)}
         <button class="wide">Save profile</button>
       </form>
-      <p class="muted">Save the fields above before opening a separate list editor.</p>
+      ${user.kind === "participant" ? `<p class="muted">Save the fields above before opening a separate list editor.</p>
       ${profileListSection(user, "skills", true)}
       ${profileListSection(user, "interests", true)}
-      ${profileListSection(user, "experiences", true)}`;
+      ${profileListSection(user, "experiences", true)}` : ""}`;
   };
 
   pages["profile-item"] = () => {
@@ -1647,6 +1851,26 @@
     const name = action.slice(2);
     const id = buttonElement.dataset.id || "";
 
+    if (name === "posts-mode") {
+      postsMode = id;
+      return render();
+    }
+    if (name === "posts-category") {
+      filters.type = id;
+      postsMode = "recommended";
+      return render();
+    }
+    if (name === "posts-clear") {
+      postsQuery = "";
+      return render();
+    }
+    if (name === "post-open") {
+      const post = getPost(id);
+      if (!post?.live) return;
+      post.views = (post.views || 0) + 1;
+      persist();
+      return go("post", { id });
+    }
     if (name === "close-modal") return closeModal();
     if (name === "navigate") return go(id);
     if (name === "inbox") return go("inbox");
@@ -1827,7 +2051,13 @@
       draftFilters.skills = [...me().skills];
       draftFilters.location = me().location ? [me().location] : [];
       draftFilters.includeOpenField = true;
-      return filterDialog();
+      jobFilters = clone(draftFilters);
+      searchedJobs = true;
+      jobMode = "search";
+      closeModal();
+      render();
+      tell("Profile-based filters applied. Open Filters to adjust them.");
+      return;
     }
 
     if (name === "histogram") return showHistogram(id);
@@ -1966,6 +2196,11 @@
     const text = key => String(data.get(key) || "").trim();
     const checked = key => data.has(key);
 
+    if (type === "x-posts-search") {
+      postsQuery = text("query");
+      return render();
+    }
+
     if (type === "x-forum-search") {
       forumQuery = text("query");
       return render();
@@ -2054,7 +2289,7 @@
       Object.assign(user, {
         firstName: text("firstName"), lastName: text("lastName"),
         preferredName: text("preferredName"), headline: text("headline"),
-        org: text("org"), major: text("major"), location: text("location"),
+        org: user.kind === "provider" ? user.org : text("org"), major: text("major"), location: text("location"),
         bio: text("bio")
       });
 
@@ -2068,7 +2303,7 @@
       persist();
       dirty = false;
       await go("profile", {}, true);
-      tell("Profile updated. Institutional changes are editable only for this simulation.");
+      tell(user.kind === "provider" ? "Company profile updated. Verified company name is unchanged." : "Profile updated. Institutional changes are editable only for this simulation.");
       return;
     }
 

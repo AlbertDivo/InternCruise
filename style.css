@@ -630,13 +630,28 @@ button.ic-chip[aria-pressed="true"] {
 }
 
 .ic-filter-dialog {
-  margin: 0 0 0 auto;
-  width: min(430px, 100vw);
-  max-width: 100vw;
-  height: 100dvh;
-  max-height: 100dvh;
-  border-radius: 18px 0 0 18px;
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  max-width: none;
+  max-height: none;
+  border: 0;
+  border-radius: 34px;
   padding: 0;
+  overflow: hidden;
+  background: #162f3688;
+}
+
+.ic-filter-dialog::backdrop { background: transparent; }
+
+.ic-filter-panel {
+  width: 100%;
+  height: 100%;
+  margin-left: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--paper);
+  border-radius: 0;
   animation: ic-slide-in .18s ease-out;
 }
 
@@ -794,5 +809,30 @@ button.ic-chip[aria-pressed="true"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ic-filter-dialog { animation: none; }
+  .ic-filter-panel { animation: none; }
 }
+
+/* Posts uses a single-column social feed within the existing phone. */
+.ic-social-heading h1{margin:0 0 12px}
+.ic-social-heading{margin-bottom:12px}
+.ic-social-feed{display:grid;gap:16px}
+.ic-social-post{min-width:0;padding:18px}
+.ic-social-author{display:flex;align-items:center;gap:12px}
+.ic-social-author>div{min-width:0}
+.ic-social-author p{margin:2px 0;font-size:.75rem}
+.ic-social-post h2{margin:18px 0 10px}
+.ic-social-body{margin:0 0 14px}
+.ic-social-context{background:#edf3ef;padding:10px 12px;border-radius:8px;font-size:.8rem}
+.ic-social-connection{color:var(--ink);font-size:.75rem;margin:12px 0 0}
+.ic-social-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+.ic-social-actions button{font-size:.8rem}
+.ic-social-actions [aria-pressed="true"],.feed-tabs [aria-pressed="true"]{background:var(--ink);color:white}
+.ic-social-search{margin-top:16px}
+
+/* Categories are primary navigation; ordering belongs to the selected category. */
+.ic-post-categories{display:flex;gap:8px;border-bottom:1px solid var(--line);padding-bottom:12px}
+.ic-post-categories button{flex:1;font-weight:700;padding:12px 8px}
+.ic-post-categories [aria-pressed="true"]{background:var(--ink);color:white;border-color:var(--ink)}
+.ic-post-order{display:flex;gap:20px;margin:4px 0 12px;padding:0 4px;border-bottom:1px solid var(--line)}
+.ic-post-order button{background:transparent;color:var(--muted);border:0;border-radius:0;padding:10px 0;font-size:.78rem;border-bottom:2px solid transparent}
+.ic-post-order [aria-pressed="true"]{color:var(--ink);font-weight:650;border-bottom-color:var(--ink)}
