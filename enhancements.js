@@ -5,9 +5,14 @@
      All credentials, documents, AI results and moderation are simulations. */
 
   const ICONS = {
-    ship: `<path d="M3 13l3 6h12l3-6-9-3-9 3Z"/>
-      <path d="M7 11V6h10v5M10 6V3h4v3M2 22q2-2 4 0t4 0t4 0t4 0t4 0"/>
-      <path d="M12 10v8M9 8h1m4 0h1"/>`,
+    ship: `<path d="M9.5 5V2.5h5V5M6 10V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3M2.5 12 12 9l9.5 3c-1.2 4.7-3.8 7-6.7 6.5L12 18l-2.8.5C6.3 19 3.7 16.7 2.5 12ZM12 9v9M1.5 21c2-1.5 3-1.5 5 0s3 1.5 5 0 3-1.5 5 0 3 1.5 5 0"/><path d="M9 7.5h.5m5 0h.5" stroke-width="1.8"/>`,
+    heart: `<path d="M20 4c-3-2-6 0-8 2-2-2-5-4-8-2-5 4 0 10 8 16 8-6 13-12 8-16Z"/>`,
+    bookmark: `<path d="M6 3h12v19l-6-4-6 4V3Z"/>`,
+    like: `<path d="M8 10 12 3c2 0 3 2 2 5h5c2 0 2 2 1 4l-2 7H8V10ZM3 10h5v10H3Z"/>`,
+    chat: `<path d="M21 11c0 5-4 8-9 8H8l-5 3 1-6a8 8 0 0 1-2-5c0-5 4-8 10-8s9 3 9 8Z"/>`,
+    building: `<path d="M3 21h18M5 21V6l7-3 7 3v15M9 8h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1M11 21v-3h2v3"/>`,
+    compare: `<path d="M12 3v18M6 21h12M3 7h18M6 7l-4 7h8L6 7Zm12 0-4 7h8l-4-7Z"/>`,
+    search: `<circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/>`,
     me: `<circle cx="12" cy="12" r="10"/>
       <circle cx="12" cy="9" r="3"/>
       <path d="M5.5 19c.8-5 12.2-5 13 0"/>`,
@@ -356,7 +361,7 @@
   }
 
   const favoriteKey = (kind, id) => `${kind}:${id}`;
-  const myFavorites = () => db.favorites[currentUserId] ?? [];
+  const myFavorites = () => [...new Set([...(db.saved?.[currentUserId] || []).map(id => favoriteKey("post", id)), ...(db.favorites[currentUserId] || [])])];
   const isFavorite = (kind, id) => myFavorites().includes(favoriteKey(kind, id));
 
   function favoriteCount(kind, item) {
@@ -432,7 +437,7 @@
         ? "internships"
         : ["posts", "create", "experience", "post"].includes(page.name)
           ? "posts"
-          : ["profile", "edit-profile", "favorites", "profile-item", "resume", "workspace", "listing"].includes(page.name)
+          : ["profile", "edit-profile", "favorites", "profile-item", "resume", "career-profile", "full-profile", "workspace", "listing"].includes(page.name)
             ? "profile" : "home";
   }
 
@@ -441,6 +446,8 @@
   render = function () {
     migrate();
     originalRender();
+    $("screen").dataset.page = route.name;
+    document.querySelector(".phone").dataset.page = route.name;
 
     const tab = currentNavigationTab();
 
@@ -538,9 +545,32 @@
     if (modal.open) modal.close();
   }
 
+  const journeyArt = `<svg viewBox="0 0 400 275" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#e8f8ef" d="M-20 70C55 35 91 67 151 48s94-2 125-24 78-15 145 2v226c-70 36-113-5-181 6S89 293-20 243Z"/>
+        <path fill="#d4f1e2" d="M-6 99 39 83l19 17 30-10 14 17-5 20-28 5-12 27-37 2-28-23Zm120-38 30-4 7 13-11 19-23-7Zm182-29 34 2 12 16-9 14-32-9-12-13Zm51 55 59-2 14 40-23 11-20-17-27-4ZM254 205l23 3 6 13-22 7-17-9Z"/>
+        <path d="M78 218c56 9 92-13 100-57 9-48 53-47 76-77" stroke="#0b6b58" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 6"/>
+        <g stroke="#09846a" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
+          <path d="m30 217 17 16h37l19-26-73 10Z" fill="#fbfffc"/><path d="m47 214 5-14 28-5 10 14M59 199v-8h14v6M30 239q12-6 24 0t24 0 24 0"/>
+          <path d="M168 145c0-13-20-13-20 0 0 8 10 16 10 16s10-8 10-16Z" fill="#fcfffd"/><circle cx="158" cy="144" r="3" fill="#09846a"/>
+          <path d="M264 77c0-13-20-13-20 0 0 8 10 16 10 16s10-8 10-16Z" fill="#fcfffd"/><circle cx="254" cy="76" r="3" fill="#09846a"/>
+          <path d="M300 78V49l15-11 15 11v29m-38 0h47m-34-1V62h8v15m7-26h3m-18 1h3m7-14V23l18 4-5 7-13-3"/>
+        </g>
+        <ellipse cx="69" cy="245" rx="47" ry="6" fill="#b6e5ce" opacity=".55"/>
+      </svg>`;
+
+  pages.welcome = () => `
+    <div class="welcome-map" aria-hidden="true">
+      ${journeyArt}
+    </div>
+    <div class="welcome-copy"><h1>Know where<br>you’re headed.</h1>
+      <p>Discover internships. Learn from<br>people who’ve been there.</p></div>
+    <div class="welcome-actions">${button("Get started →", "account", "", "wide")}
+      ${button("Log in", "login", "", "secondary wide")}</div>
+    <p class="welcome-footnote">Classroom demo · Fictional data</p>`;
+
   pages.home = () => `${heading("Your next starting point", "", false)}
-    <div class="hero-art">${icon("ship")}</div>
     <p>Explore opportunities, learn from other students and build your next step.</p>
+    <div class="home-journey" aria-hidden="true">${journeyArt}</div>
     <section class="card">
       <h2>Internship information list</h2>
       <p>Browse opportunities, compare roles and keep a wishlist.</p>
@@ -580,23 +610,23 @@
       <header class="ic-social-author">
         ${avatar(user)}
         <div>${authorButton(post)}
-          <p class="muted">${esc(post.anonymous ? "Anonymous community member" : user?.headline || user?.org || "Community member")}</p>
+          <p class="muted">${esc(post.anonymous ? "Anonymous community member" : user?.kind === "provider" ? user.org : `${user?.org || "Community"} · ${user?.major || user?.identity || "Member"}`)}</p>
           <p class="muted">${esc(dateLabel(post.created))} · ${post.type === "official" ? "Official post" : "Experience share"}</p>
         </div>
       </header>
       ${postsMode === "recommended" && connected
-        ? '<p class="ic-social-connection">Recommended · Alumni / same major</p>' : ""}
+        ? '<p class="ic-social-connection">Alumni / major connection</p>' : ""}
       <h2>${esc(data.title)}</h2>
       <p class="preserve ic-social-body">${esc(data.body)}</p>
-      <p class="ic-social-context">${esc(data.company)} · ${esc(data.job)}${data.duration ? ` · ${esc(data.duration)} weeks` : ""}</p>
+      <p class="ic-social-context">${icon("building")}${esc(data.company)} · ${esc(data.job)}${data.duration ? ` · ${esc(data.duration)} weeks` : ""}</p>
       ${post.closed ? '<p class="badge">Applications closed</p>' : ""}
       <footer class="ic-social-actions">
-        ${xb(`♡ ${likesOf(post)}`, "like", reference, "secondary",
+        ${xb(`${icon("like")} ${likesOf(post)}`, "like", reference, "secondary",
           `aria-label="Like post" aria-pressed="${post.likes?.includes(currentUserId) || false}"`)}
-        ${xb(`${isFavorite("post", post.id) ? "★ Saved" : "☆ Save"} · ${favoriteCount("post", post)}`,
+        ${xb(`${icon("bookmark")} ${favoriteCount("post", post)}`,
           "favorite", reference, "secondary",
           `aria-label="Save post" aria-pressed="${isFavorite("post", post.id)}"`)}
-        ${xb("Read & discuss →", "post-open", post.id, "link-button")}
+        ${xb(`${icon("chat")} ${post.questions?.length || 0}`, "post-open", post.id, "link-button", 'aria-label="Read post and comments"')}
       </footer>
     </article>`;
   }
@@ -622,10 +652,10 @@
           'placeholder="Search stories, companies, roles or authors"')}
         <div class="row"><button>Search</button>${xb("Clear", "posts-clear")}</div>
       </form>
-      <p class="muted">${postsMode === "recommended"
+      <p class="muted feed-explainer">${postsMode === "recommended"
         ? "Your connections first, then likes, saves & views."
         : "Latest posts first."}</p>
-      <p class="muted">Fictional demo posts and interaction counts.</p>
+      <p class="muted feed-demo-note">Fictional demo posts · Sample interaction counts</p>
       <p class="muted" role="status">${posts.length} ${posts.length === 1 ? "post" : "posts"}</p>
       <div class="ic-social-feed">${posts.map(socialPostCard).join("") ||
         '<p class="empty">No posts found. Try another search or category.</p>'}</div>`;
@@ -983,6 +1013,138 @@
     return result.sort((a, b) => likesOf(b.item) - likesOf(a.item));
   }
 
+  const meViews = {};
+  const meCategories = {
+    published: ["posts", "forum"], comments: ["posts", "forum", "internships"],
+    saved: ["posts", "forum", "internships"], liked: ["posts", "forum", "internships"]
+  };
+
+  function meView() {
+    return meViews[currentUserId] ??= { tab: "published", categories: {}, scroll: {} };
+  }
+
+  function profileEntries() {
+    const entries = [];
+    const add = (item, kind, category, title, page, source, comment = false) => {
+      entries.push({ item, kind, category, title, page, source, comment,
+        key: `${kind}|${source}|${item.id}` });
+    };
+    for (const post of db.posts.filter(post => post.live)) {
+      add(post, "post", "posts", post.live.title, "post", post.id);
+      for (const question of post.questions || []) {
+        add(question, "question", "posts", post.live.title, "post", post.id, true);
+        for (const reply of question.replies || []) {
+          add(reply, "question-reply", "posts", post.live.title, "post", post.id, true);
+        }
+      }
+      for (const review of post.reviews || []) {
+        add(review, "review", "internships", post.live.job, "internship", post.id, true);
+      }
+    }
+    for (const forum of db.forums) {
+      add(forum, "forum", "forum", forum.title, "forum-detail", forum.id);
+      for (const reply of forum.replies || []) {
+        add(reply, "forum-reply", "forum", forum.title, "forum-detail", forum.id, true);
+      }
+    }
+    return entries;
+  }
+
+  function meEntries(tab, category) {
+    return profileEntries().filter(entry => {
+      if (entry.category !== category) return false;
+      if (tab === "published") return !entry.comment && entry.item.owner === currentUserId;
+      if (tab === "comments") return entry.comment && entry.item.owner === currentUserId;
+      if (tab === "saved") return isFavorite(entry.kind, entry.item.id);
+      return entry.item.likes?.includes(currentUserId);
+    }).sort((a, b) => tab === "saved"
+      ? myFavorites().indexOf(favoriteKey(b.kind, b.item.id)) - myFavorites().indexOf(favoriteKey(a.kind, a.item.id))
+      : String((tab === "liked" ? b.item.likedAt?.[currentUserId] : null) || b.item.created || "")
+        .localeCompare(String((tab === "liked" ? a.item.likedAt?.[currentUserId] : null) || a.item.created || "")));
+  }
+
+  function meEntryCard(entry, tab) {
+    const { item, kind, key, title, comment } = entry;
+    const text = comment ? item.text || "Ratings-only review" : item.live?.body || item.body;
+    const ownAnonymous = item.owner === currentUserId && item.anonymous;
+    return `<article class="card me-entry">
+      <div class="row between"><small class="muted">${comment ? "Comment on" : kind === "forum" ? "Discussion" : "Post"}</small>
+        ${ownAnonymous ? '<span class="badge">Posted anonymously</span>' : ""}</div>
+      <h3>${esc(title)}</h3>
+      <p class="preserve">${esc(text || "")}</p>
+      <small class="muted">${esc(dateLabel(item.created))}</small>
+      <div class="row me-entry-actions">
+        ${xb(comment ? "View comment →" : "Open →", "me-open", key, "link-button")}
+        ${tab === "saved" ? xb("Unsave", "favorite", key, "link-button") : ""}
+        ${tab === "liked" ? xb("Unlike", "like", key, "link-button") : ""}
+      </div>
+    </article>`;
+  }
+
+  function renderStudentMe(user) {
+    const view = meView();
+    const category = view.categories[view.tab] || "posts";
+    const entries = meEntries(view.tab, category);
+    const all = profileEntries();
+    const owned = all.filter(entry => entry.item.owner === currentUserId);
+    const likes = owned.reduce((sum, entry) => sum + likesOf(entry.item), 0);
+    const wished = allJobs().filter(post => (db.wishlists[currentUserId] || []).includes(post.id)).reverse();
+    const savedCount = all.filter(entry => isFavorite(entry.kind, entry.item.id)).length + wished.length;
+    const browse = category === "forum" ? "forum" : category === "internships" ? "internships" : "posts";
+    return `<section class="me-overview">
+      <div class="row between"><span class="eyebrow">My profile</span>
+        <details class="me-settings"><summary aria-label="Account settings">${icon("me")} Settings</summary>
+          <div>${button("Log out", "logout", "", "secondary wide")}</div>
+        </details></div>
+      <div class="profile-top">${avatar(user)}<div><h1>${esc(fullName(user))}</h1>
+        <span class="badge">${esc(user.identity)} · Demo verified</span></div></div>
+      <p class="me-school">${esc(user.org)} · ${esc(user.major || "Major not added")}</p>
+      <p class="muted">${icon("pin")}${esc(user.location || "Location not added")}</p>
+      <p class="me-bio">${esc(user.headline || user.bio || "Add a short introduction to your profile.")}</p>
+      <div class="me-skills">${(user.skills || []).slice(0, 3).map(skill => `<span>${esc(skill)}</span>`).join("")}</div>
+      <div class="me-stats"><div><strong>${owned.filter(entry => !entry.comment).length}</strong><span>Published</span></div>
+        <div><strong>${likes}</strong><span>Likes received</span></div><div><strong>${savedCount}</strong><span>Saved items</span></div></div>
+      ${button("Edit profile", "edit-profile", "", "secondary wide")}
+    </section>
+    <section class="card me-career-links" aria-label="Career and profile information">
+      ${xb(`<span><strong>My résumé</strong><small>${user.resumeDemo ? "Sample résumé added · Update" : "Not added · Add a sample résumé"}</small></span><b>›</b>`, "navigate", "resume", "me-career-link")}
+      ${xb(`<span><strong>Career profile</strong><small>${(user.experiences || []).length} ${(user.experiences || []).length === 1 ? "experience" : "experiences"} · Skills & interests</small></span><b>›</b>`, "navigate", "career-profile", "me-career-link")}
+      ${xb('<span><strong>View full profile</strong><small>Education, graduation & about</small></span><b>›</b>', "navigate", "full-profile", "me-career-link")}
+    </section>
+    <section class="me-content">
+      <div class="me-tabs-sticky">
+        <nav class="me-tabs" aria-label="My content">
+          ${[["published", "Published"], ["comments", "Comments"], ["saved", "Saved"], ["liked", "Liked"]].map(([key, label]) =>
+            xb(label, "me-tab", key, "", `aria-pressed="${view.tab === key}" aria-controls="meContent"`)).join("")}
+        </nav>
+        <nav class="me-subtabs" aria-label="Content type">
+          ${meCategories[view.tab].map(key => xb(key === "posts" ? "Posts" : key === "forum" ? "Forum" : "Internships",
+            "me-category", key, "secondary", `aria-pressed="${category === key}" aria-controls="meContent"`)).join("")}
+        </nav>
+      </div>
+      <div id="meContent" aria-label="${esc(view.tab)} ${esc(category)}">
+        ${view.tab === "saved" && category === "internships" ? `<h2 class="me-section-label">Wishlisted internships (${wished.length})</h2>
+          ${wished.map(jobRow).join("")}${entries.length ? '<h2 class="me-section-label">Saved internship comments</h2>' : ""}` : ""}
+        ${entries.map(entry => meEntryCard(entry, view.tab)).join("")}
+        ${!entries.length && !(view.tab === "saved" && category === "internships" && wished.length)
+          ? `<div class="me-empty"><p>No ${view.tab === "published" ? "published content" : view.tab === "comments" ? "comments" : view.tab === "saved" ? "saved items" : "liked content"} here yet.</p>
+            ${xb(`Explore ${category === "posts" ? "posts" : category === "forum" ? "Forum" : "internships"}`, "navigate", browse, "secondary")}</div>` : ""}
+      </div>
+    </section>`;
+  }
+
+  pages["career-profile"] = () => provider() ? missingPage() : `${heading("Career profile", "Your experience, skills and interests.")}
+    <section class="card">${profileListSection(me(), "experiences", true)}</section>
+    <section class="card">${profileListSection(me(), "skills", true)}${profileListSection(me(), "interests", true)}</section>`;
+
+  pages["full-profile"] = () => provider() ? missingPage() : `${heading("Full profile")}
+    <section class="card"><div class="profile-top">${avatar(me())}<h1>${esc(fullName(me()))}</h1></div>
+      <dl class="meta"><dt>School</dt><dd>${esc(me().org)}</dd><dt>Major</dt><dd>${esc(me().major || "Not added")}</dd>
+        <dt>Study</dt><dd>${esc(me().degree)} · Year ${esc(me().year)}</dd><dt>Graduation</dt><dd>${esc(me().graduation || "Not added")}</dd>
+        <dt>Location</dt><dd>${esc(me().location || "Not added")}</dd></dl>
+      <h2>About</h2><p class="preserve">${esc(me().bio || "No bio yet.")}</p>
+      ${button("Edit profile", "edit-profile", "", "wide")}</section>`;
+
   pages.profile = () => {
     const person = route.actor || currentUserId;
     const user = getUser(actorOwner(person));
@@ -1007,37 +1169,45 @@
         chat.context.startsWith("listing:") &&
         chat.participants.some(person => actorOwner(person) === user.id)) : [];
       return `${own ? "" : button("← Back", "back", "", "link-button")}
-        <section class="card">
+        <section class="card company-overview">
           <div class="profile-top">${avatar(user)}<div>
             <h1>${esc(user.org)}</h1><span class="badge">Company employee · Demo verified</span>
           </div></div>
           <p><strong>${esc(user.headline || "")}</strong></p>
           <h2>About the company</h2>
           <p class="preserve">${esc(user.bio || "No company introduction yet.")}</p>
-          <h2>Company contact</h2>
-          <dl class="meta">
-            <dt>Contact person</dt><dd>${esc(fullName(user))}</dd>
-            <dt>Department</dt><dd>${esc(user.major || "Not added")}</dd>
-            <dt>Location</dt><dd>${esc(user.location || "Not added")}</dd>
-          </dl>
+          <h2 class="sr-only">Company contact</h2>
+          <div class="company-contact">
+            <div>${icon("me")}<span><strong>${esc(fullName(user))}</strong><small>${esc(user.major || "Contact person")}</small></span></div>
+            <div>${icon("pin")}<span>${esc(user.location || "Not added")}</span></div>
+          </div>
           ${own ? button("Edit company profile", "edit-profile", "", "wide")
             : button("Message company", "message-actor", person, "wide")}
         </section>
-        ${own ? `<section class="card stack">
+        ${own ? `<section class="card stack company-management">
           <h2>Internship management</h2>
-          <p class="muted">${published.filter(post => !post.closed).length} open · ${published.filter(post => post.closed).length} closed · ${listings.filter(post => post.review === "pending").length} awaiting review</p>
-          ${button("Manage internship listings →", "workspace", "", "wide")}
-          ${xb("Messages & notifications", "navigate", "inbox", "secondary wide")}
-          ${xb("Favorites", "navigate", "favorites", "secondary wide")}
-          ${button("Log out", "logout", "", "secondary wide")}
+          <div class="company-stat-grid">
+            <div><strong>${published.filter(post => !post.closed).length}</strong>Open</div>
+            <div><strong>${published.filter(post => post.closed).length}</strong>Closed</div>
+            <div><strong>${listings.filter(post => post.review === "pending").length}</strong>Pending</div>
+          </div>
+          ${button("Manage listings →", "workspace", "", "wide")}
         </section>
-        <section class="card">
-          <h2>Internship inquiries (${inquiries.length})</h2>
+        <div class="company-links">${xb(`${icon("chat")} Messages & inquiries <span>›</span>`, "navigate", "inbox", "secondary wide")}
+          ${xb("Favorites", "navigate", "favorites", "secondary wide")}
+          ${button("Log out", "logout", "", "secondary wide")}</div>
+        <details class="card company-inquiries">
+          <summary>Internship inquiries (${inquiries.length})</summary>
           ${inquiries.map(chatRow).join("") || '<p class="muted">No internship inquiries yet. Questions sent from a listing will appear here.</p>'}
-        </section>` : ""}
+        </details>` : ""}
         <h2>Published internships (${published.length})</h2>
-        ${postGrid(published)}`;
+        <div class="company-listings">${published.map(post => xb(
+          `<strong>${esc(post.live.job)}</strong><span>${esc(post.live.location)} · ${post.live.duration} weeks</span><b>${post.closed ? "Closed" : "Published"}</b>`,
+          "job-open", post.id, "company-listing"
+        )).join("") || '<p class="muted">No published internships yet.</p>'}</div>`;
     }
+
+    if (own && user.kind === "participant") return renderStudentMe(user);
 
     return `${own ? "" : button("← Back", "back", "", "link-button")}
       <section class="card">
@@ -1376,52 +1546,27 @@
     const compared = (db.comparisons[currentUserId] || []).includes(post.id);
 
     return `<article class="ic-job-row" tabindex="0" role="link"
-      aria-label="Open ${esc(data.job)} at ${esc(data.company)}"
-      data-job="${esc(post.id)}">
-      <div class="ic-job-line">${avatar(getUser(post.owner))}
-        <strong>${esc(data.company)}</strong>
-        ${post.closed ? '<span class="badge">Closed</span>' : ""}
+      aria-label="Open ${esc(data.job)} at ${esc(data.company)}" data-job="${esc(post.id)}">
+      <div class="ic-job-title"><h3>${esc(data.job)}</h3>
+        ${xb(icon("heart"), "wishlist", post.id, "ic-heart", `aria-label="Wishlist internship" aria-pressed="${wished}"`)}</div>
+      <p class="ic-job-company">${esc(data.company)} ${post.closed ? '<span class="badge">Closed</span>' : ""}</p>
+      <div class="ic-job-tags">
+        <span>${icon("pin")}${esc(data.location)}</span><span>${icon("computer")}${esc(meta.arrangement)}</span>
+        <span>${icon("calendar")}${data.duration} weeks</span><span>${icon("clock")}HK$${meta.payMin}–${meta.payMax}/hr</span>
       </div>
-      <div class="ic-job-line">
-        <h3>${esc(data.job)}</h3>
-        <div class="ic-actions">
-          ${xb(wished ? "♥" : "♡", "wishlist", post.id, "ic-heart",
-            `aria-label="Wishlist internship" aria-pressed="${wished}"`)}
-          ${xb(compared ? "✓ Comparison" : "+ Comparison", "compare-toggle", post.id)}
-        </div>
-      </div>
-      <div class="ic-job-line">
-        <span>${icon("pin")}${esc(data.location)}</span>
-        <span>${icon("computer")}${esc(meta.arrangement)}</span>
-        <span>${icon("calendar")}${data.duration} weeks</span>
-      </div>
-      <div class="ic-job-line">
-        <span>$ ${meta.payMin}–${meta.payMax} ${esc(meta.payUnit)}</span>
-        <span>${icon("clock")}${esc(data.deadline || "Deadline not specified")}</span>
-      </div>
+      ${data.deadline ? `<p class="muted">Apply by ${esc(data.deadline)}</p>` : ""}
+      <div class="ic-job-compare">${xb(`${icon("compare")} ${compared ? "Added to comparison" : "Compare"}`, "compare-toggle", post.id)}</div>
     </article>`;
   }
 
   function recommendationIntro() {
     const user = me();
-    return `<h2>Recommended for you by our AI model</h2>
-      <p class="muted">
-        Based on your ${user.resumeDemo ? "sample uploaded résumé" : "editable demo profile"},
-        we have recommended results based on your ${esc(user.degree.toLowerCase())}
-        major “${esc(user.major || "not specified")}”
-        (we have also included internships that do not require a specific academic background),
-        skills ${esc(user.skills.join(", ") || "not specified")},
-        your interests ${esc(user.interests.join(", ") || "not specified")},
-        your perceived strengths ${esc(user.strengths.join(", ") || "not specified")},
-        and your location “${esc(user.location || "not specified")}”.
-        This is also available by selecting “Apply AI-recommended filters” in the
-        “Filters” slide, and you can always manually edit the filters.
-      </p>
-      <p class="warning">
-        Demonstration only: this version uses simple profile-matching rules,
-        not an AI model. Strengths and résumé-derived values are sample data.
-        AI-filter presets may narrow results further than the recommendation list.
-      </p>`;
+    return `<h2>Recommended for you</h2>
+      <p class="muted">Internships that may match your interests.</p>
+      <details class="recommendation-details"><summary>Why these internships?</summary>
+        <p>Based on ${esc(user.major || "your major")}, ${esc(user.skills.join(", ") || "your skills")} and ${esc(user.location || "your location")}.</p>
+        <p>Demo: profile-based rules, not an AI model. You can edit these criteria in Filters.</p>
+      </details>`;
   }
 
   pages.internships = () => {
@@ -1433,14 +1578,10 @@
     );
 
     return `<div class="ic-sticky row between">
-        <h1>Internship Information List</h1>
+        <h1>Find your next internship</h1>
         ${xb("Comparisons", "navigate", "comparisons")}
       </div>
-      <p class="muted">
-        Please check our (possibly) most detailed and exhaustive information list
-        of publicly available internships. There will always be at least one that suits you.
-      </p>
-      <p class="ic-subtle">All opportunities in this prototype are fictional sample listings.</p>
+      <p class="ic-subtle internship-demo-note">Explore opportunities. All listings are fictional demos.</p>
       <div class="feed-tabs">
         ${xb("Search", "job-mode", "search", "", `aria-pressed="${jobMode === "search"}"`)}
         ${xb("Wishlisted", "job-mode", "wishlisted", "", `aria-pressed="${jobMode === "wishlisted"}"`)}
@@ -1448,7 +1589,7 @@
 
       ${jobMode === "search" ? `
         <form data-form="x-job-search">
-          ${field("Search internships", "query", jobQuery, "text", false)}
+          ${field("Search internships", "query", jobQuery, "text", false, 'placeholder="Search roles, companies or keywords"')}
           <div class="row"><button>Search</button>
             ${xb(`${icon("filter")} Filters`, "filters")}
           </div>
@@ -1462,7 +1603,7 @@
             ${recommendations.map(jobRow).join("") ||
               '<p class="muted">No profile matches yet. Browse all opportunities below.</p>'}
           </section>
-          <p class="ic-large-hint">Start browsing internships by applying filters!</p>
+          <p class="ic-large-hint">Looking for something specific?</p>
           ${xb("Explore filters", "filters", "", "wide")}
           <h2>All publicly listed sample opportunities</h2>
           ${jobs.map(jobRow).join("")}
@@ -1553,9 +1694,40 @@
     `, "ic-filter-dialog");
   }
 
-  pages.comparisons = () => {
+  let comparisonBase = "";
+  let comparisonPeer = "";
+
+  function comparisonSelection() {
     const ids = db.comparisons[currentUserId] || [];
     const jobs = allJobs().filter(post => ids.includes(post.id));
+    const base = jobs.find(post => post.id === comparisonBase) || jobs[0];
+    const others = jobs.filter(post => post !== base);
+    const peer = others.find(post => post.id === comparisonPeer) || others[0];
+    comparisonBase = base?.id || "";
+    comparisonPeer = peer?.id || "";
+    return { jobs, base, others, peer };
+  }
+
+  function refreshComparison() {
+    const screen = $("screen");
+    const scroll = screen.scrollTop;
+    const focused = document.activeElement?.name;
+    render();
+    screen.scrollTop = scroll;
+    if (["comparison-base", "comparison-peer"].includes(focused)) {
+      screen.querySelector(`[name="${focused}"]`)?.focus({ preventScroll: true });
+    }
+  }
+
+  function stepComparison(direction) {
+    const { others, peer } = comparisonSelection();
+    if (others.length < 2) return;
+    comparisonPeer = others[(others.indexOf(peer) + direction + others.length) % others.length].id;
+    refreshComparison();
+  }
+
+  pages.comparisons = () => {
+    const { jobs, base, others, peer } = comparisonSelection();
     const rows = [
       ["Employer", p => p.live.company],
       ["Position", p => p.live.job],
@@ -1573,23 +1745,43 @@
       ["Overall rating", p => `${overall(p).toFixed(1)}/5`],
       ["Application status", p => p.closed ? "Closed" : "Open"]
     ];
+    const choice = (post, options, isBase) => `<div class="comparison-choice ${isBase ? "comparison-base" : ""}">
+      <label>${isBase ? "Baseline" : "Compare with"}
+        <select name="comparison-${isBase ? "base" : "peer"}" aria-label="${isBase ? "Baseline internship" : "Comparison internship"}">
+          ${options.map(p => `<option value="${esc(p.id)}" ${p.id === post.id ? "selected" : ""}>${esc(p.live.job)} · ${esc(p.live.company)}</option>`).join("")}
+        </select>
+      </label>
+      <h2>${esc(post.live.job)}</h2>
+      <p>${esc(post.live.company)}</p>
+      <div class="comparison-choice-actions">
+        ${xb("View role", "job-open", post.id, "link-button")}
+        ${xb("×", "compare-toggle", post.id, "secondary", `aria-label="Remove ${esc(post.live.job)} at ${esc(post.live.company)} from comparisons"`)}
+      </div>
+    </div>`;
 
     return `${heading("Comparisons")}
-      ${jobs.length ? `<div class="ic-compare-scroll">
-        <table class="ic-compare">
-          <thead><tr><th scope="col">Aspect</th>
-            ${jobs.map(post => `<th scope="col">
-              ${xb("×", "compare-toggle", post.id, "secondary", 'aria-label="Remove comparison"')}
-              <p>${esc(post.live.job)}</p>
-            </th>`).join("")}
-          </tr></thead>
-          <tbody>${rows.map(([label, value]) => `
-            <tr><th scope="row">${esc(label)}</th>
-              ${jobs.map(post => `<td>${esc(value(post))}</td>`).join("")}
-            </tr>
-          `).join("")}</tbody>
-        </table>
-      </div>` : '<p class="empty">Add internships using “+ Comparison”.</p>'}`;
+      <div class="comparison-intro"><p>${jobs.length} selected · Compare two at a time</p>
+        ${xb("Add roles", "navigate", "internships", "link-button")}</div>
+      ${jobs.length ? `<section class="comparison-board" aria-label="Internship comparison">
+        <div class="comparison-sticky">
+          <div class="comparison-choices">
+            ${choice(base, jobs, true)}
+            ${peer ? choice(peer, others, false) : `<div class="comparison-choice comparison-placeholder"><p>Add another role to compare.</p>${xb("Browse roles", "navigate", "internships", "secondary")}</div>`}
+          </div>
+          ${others.length > 1 ? `<div class="comparison-switcher">
+            ${xb("←", "comparison-step", "-1", "secondary", 'aria-label="Previous comparison internship"')}
+            <span role="status" aria-live="polite">${others.indexOf(peer) + 1} of ${others.length} · Swipe to switch</span>
+            ${xb("→", "comparison-step", "1", "secondary", 'aria-label="Next comparison internship"')}
+          </div>` : ""}
+        </div>
+        <div class="comparison-details">${rows.map(([label, value]) => `<section class="comparison-aspect">
+          <h2>${esc(label)}</h2>
+          <div class="comparison-values">
+            <p aria-label="${esc(base.live.job)} · ${esc(label)}">${esc(value(base) || "Not specified")}</p>
+            <p ${peer ? `aria-label="${esc(peer.live.job)} · ${esc(label)}"` : ""}>${peer ? esc(value(peer) || "Not specified") : "—"}</p>
+          </div>
+        </section>`).join("")}</div>
+      </section>` : '<p class="empty">Add internships using “Compare” to start your comparison.</p>'}`;
   };
   function treatmentResults(post) {
     return TREATMENTS.map(treatment => {
@@ -1817,7 +2009,8 @@
 
   document.addEventListener("click", async event => {
     const buttonElement = event.target.closest("button[data-action]");
-    const action = buttonElement?.dataset.action;
+    const action = ({ "save-post": "x-favorite", "like-post": "x-like", "like-forum": "x-like" })[buttonElement?.dataset.action]
+      || buttonElement?.dataset.action;
 
     if (action === "reset") {
       // The original reset handler remains responsible for confirmation/reset.
@@ -1849,7 +2042,37 @@
     event.stopImmediatePropagation();
 
     const name = action.slice(2);
-    const id = buttonElement.dataset.id || "";
+    const id = buttonElement.dataset.action === "like-forum"
+      ? `forum||${buttonElement.dataset.id}` : buttonElement.dataset.id || "";
+
+    if (name === "me-tab" || name === "me-category") {
+      const view = meView();
+      const category = view.categories[view.tab] || "posts";
+      const screen = $("screen");
+      const scroll = screen.scrollTop;
+      const sectionTop = scroll + screen.querySelector(".me-content").getBoundingClientRect().top - screen.getBoundingClientRect().top;
+      view.scroll[`${view.tab}|${category}`] = scroll;
+      if (name === "me-tab" && meCategories[id]) view.tab = id;
+      if (name === "me-category" && meCategories[view.tab].includes(id)) view.categories[view.tab] = id;
+      render();
+      $("screen").scrollTop = view.scroll[`${view.tab}|${view.categories[view.tab] || "posts"}`] ?? Math.max(0, Math.min(scroll, sectionTop));
+      document.querySelector(`[data-action="x-${name}"][data-id="${esc(id)}"]`)?.focus({ preventScroll: true });
+      return;
+    }
+
+    if (name === "me-open") {
+      const entry = profileEntries().find(entry => entry.key === id);
+      if (!entry) return;
+      await go(entry.page, { id: entry.source });
+      if (entry.comment && entry.item.text) {
+        const text = [...$("screen").querySelectorAll(".preserve")].find(el => el.textContent.trim() === entry.item.text.trim());
+        if (text) {
+          text.classList.add("me-comment-focus");
+          text.scrollIntoView({ block: "center", behavior: "auto" });
+        }
+      }
+      return;
+    }
 
     if (name === "posts-mode") {
       postsMode = id;
@@ -1908,7 +2131,7 @@
     }
 
     if (name === "like" || name === "favorite") {
-      const { kind, item } = findItem(id);
+      const { kind, item } = findItem(id.includes("|") ? id : `post||${id}`);
       if (!item) return;
 
       if (name === "like") {
@@ -1916,12 +2139,19 @@
         item.likes = item.likes.includes(currentUserId)
           ? item.likes.filter(value => value !== currentUserId)
           : [...item.likes, currentUserId];
+        item.likedAt ??= {};
+        if (item.likes.includes(currentUserId)) item.likedAt[currentUserId] = timestamp();
+        else delete item.likedAt[currentUserId];
       } else {
         const key = favoriteKey(kind, item.id);
         db.favorites[currentUserId] ??= [];
         db.favorites[currentUserId] = myFavorites().includes(key)
           ? myFavorites().filter(value => value !== key)
           : [...myFavorites(), key];
+        if (kind === "post") {
+          db.saved[currentUserId] = db.favorites[currentUserId]
+            .filter(key => key.startsWith("post:")).map(key => key.slice(5));
+        }
       }
 
       persist();
@@ -1996,8 +2226,11 @@
       return;
     }
 
+    if (name === "comparison-step") return stepComparison(Number(id));
+
     if (name === "compare-toggle") {
       toggleAccountList("comparisons", id);
+      if (route.name === "comparisons") return refreshComparison();
       redrawPreservingInputs();
       return;
     }
@@ -2101,6 +2334,26 @@
       : "";
   }
 
+  let comparisonTouch = null;
+  document.addEventListener("touchstart", event => {
+    comparisonTouch = event.touches.length === 1 &&
+      event.target.closest(".comparison-board") &&
+      !event.target.closest("button, select, a")
+      ? { x: event.touches[0].clientX, y: event.touches[0].clientY } : null;
+  }, { passive: true });
+  document.addEventListener("touchend", event => {
+    if (!comparisonTouch) return;
+    const start = comparisonTouch;
+    comparisonTouch = null;
+    const touch = event.changedTouches[0];
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (route.name === "comparisons" && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      stepComparison(dx < 0 ? 1 : -1);
+    }
+  }, { passive: true });
+  document.addEventListener("touchcancel", () => { comparisonTouch = null; }, { passive: true });
+
   document.addEventListener("input", event => {
     const form = event.target.closest("form");
     if (form?.dataset.form === "x-forum-compose" &&
@@ -2119,6 +2372,12 @@
 
   document.addEventListener("change", async event => {
     const element = event.target;
+
+    if (element.name === "comparison-base" || element.name === "comparison-peer") {
+      if (element.name === "comparison-base") comparisonBase = element.value;
+      else comparisonPeer = element.value;
+      return refreshComparison();
+    }
 
     if (element.name === "anonymous" && element.checked) {
       const type = element.form?.dataset.form;
