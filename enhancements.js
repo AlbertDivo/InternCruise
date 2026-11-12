@@ -1043,7 +1043,11 @@
   };
 
   // Existing proof entry points use the same profile-linked proof flow.
-  pages.proof = pages["internship-proof"];
+  const originalExperienceProofPage = proofPage;
+
+// The original Posts → verified experience workflow remains available.
+// Its successful proof step is additionally linked to the user's Me profile.
+  pages.proof = originalExperienceProofPage;
   const FILTER_NAMES = {
     employer: "Employer",
     position: "Position",
