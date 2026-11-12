@@ -1585,21 +1585,21 @@ document.addEventListener("submit", async (event) => {
      position: source.live.job,
      employer: source.live.company,
      time: `Sample internship · ${source.live.duration} weeks`,
-     description: "Sample verified internship experience. You can edit these details in Me."
+     description: "Sample verified internship experience. You can edit these details in the profile page."
    };
 
-if (experience) {
-  Object.assign(experience, verifiedDetails);
-} else {
-  me().experiences.push({
-    id: uid(),
-    ...verifiedDetails
-  });
-}
+   if (experience) {
+     Object.assign(experience, verifiedDetails);
+   } else {
+     me().experiences.push({
+       id: uid(),
+       ...verifiedDetails
+     });
+   }
 
-persist();
-dirty = false;
-return go("experience", { source: source.id, proofPassed: true });
+   persist();
+   dirty = false;
+   return go("experience", { source: source.id, proofPassed: true });
   }
 
   if (type === "experience") {
