@@ -2523,6 +2523,77 @@
     const id = buttonElement.dataset.action === "like-forum"
       ? `forum||${buttonElement.dataset.id}` : buttonElement.dataset.id || "";
 
+    if (name === "watch-ad") {
+      if (!me()?.verified || !await mayLeave()) return;
+    
+      rewardAdSession = {
+        owner: currentUserId,
+        elapsed: 0,
+        lastTick: performance.now(),
+        awarded: false
+      };
+    
+      dirty = false;
+      return go("reward-ad");
+    }
+    
+    if (name === "ad-skip") {
+      return finishRewardAd();
+    }
+    
+    if (name === "ad-exit") {
+      closeModal();
+      return go("home", {}, true);
+    }
+    
+    if (name === "ad-use-trial") {
+      closeModal();
+      return go("trial-people", {}, true);
+    }
+    
+    if (name === "trial-chat") {
+      if (trialChatBusy || !me()?.verified) return;
+    
+      if (!messagingTrialBalance()) {
+        return tell("Watch a demo advertisement to earn messaging trials.");
+      }
+    
+      const recipient = getUser(id);
+      if (!recipient?.verified || id === currentUserId) return;
+    
+      const owner = currentUserId;
+      const existing = db.chats.find(chat =>
+        chat.context === "direct" &&
+        chat.participants.includes(owner) &&
+        chat.participants.includes(id)
+      );
+    
+      trialChatBusy = true;
+    
+      try {
+        await openChat(id);
+    
+        const opened = route.name === "chat" ? getChat(route.id) : null;
+        const correctChat = opened?.context === "direct" &&
+          opened.participants.includes(owner) &&
+          opened.participants.includes(id);
+    
+        if (currentUserId !== owner || !correctChat) return;
+    
+        if (existing) {
+          tell("Opened your existing conversation. No trial was used.");
+        } else {
+          db.messagingTrials ??= {};
+          db.messagingTrials[owner] = Math.max(0, messagingTrialBalance() - 1);
+          persist();
+          tell(`One demo trial used. ${messagingTrialBalance()} remaining.`);
+        }
+      } finally {
+        trialChatBusy = false;
+      }
+    
+      return;
+    }
     if (name === "me-tab" || name === "me-category") {
       const view = meView();
       const category = view.categories[view.tab] || "posts";
