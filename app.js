@@ -1136,7 +1136,7 @@ function render() {
   $("notificationButton").hidden = !authenticated || entering;
   $("roleBadge").textContent = route.name === "simulator"
     ? "SIMULATOR"
-    : !authenticated || entering ? "DEMO" : provider() ? "PROVIDER" : "PARTICIPANT";
+    : !authenticated || entering ? "DEMO" : provider() ? "COMPANY" : "PARTICIPANT";
 
   const unread = db.notifications.filter((item) =>
     item.to === currentUserId && !item.read
