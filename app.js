@@ -1756,12 +1756,22 @@ document.addEventListener("submit", async (event) => {
 
   if (type === "listing") {
     if (!provider()) return;
-    let post = form.dataset.id ? getPost(form.dataset.id) : null;
     if (post && (
-      post.owner !== currentUserId || post.review === "pending" ||
-      (post.live && post.access !== "approved")
-    )) return fail("Edit access is not available.");
-
+      post.owner !== currentUserId || post.review === "pending"
+    )) return fail("This listing cannot be edited while approval is pending.");
+      
+    const payMin = Number(text("payMin"));
+    const payMax = Number(text("payMax"));
+   
+    if (
+      !Number.isFinite(payMin) ||
+      !Number.isFinite(payMax) ||
+      payMin < 0 ||
+      payMax > 100000 ||
+      payMin > payMax
+    ) {
+      return fail("Enter a monthly pay range from HK$0 to HK$100,000.");
+    }
     const draft = {
       title: text("title"), company: me().org, job: text("job"),
       duration: Number(text("duration")), location: text("location"),
