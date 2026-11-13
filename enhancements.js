@@ -469,6 +469,7 @@
     document.querySelectorAll(".hero-art").forEach(el => {
       el.innerHTML = icon("ship");
     });
+    syncRewardAd();
   };
 
   document.querySelector(".brand").innerHTML = `${icon("ship")} InternCruise`;
