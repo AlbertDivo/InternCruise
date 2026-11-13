@@ -76,6 +76,53 @@
 
   const ASPECTS = ["Working environment", "Mentorship", "Learning opportunities"];
 
+  function migrateMonthlyPay(post) {
+    if (post.type !== "official") return;
+  
+    const hourlyPattern =
+      /(?:HK\$|HKD\s*|\$)?\s*(\d[\d,]*(?:\.\d+)?)\s*(?:\/\s*(?:hour|hr)|per\s+hour)/gi;
+  
+    // Fictional migration assumption only; not a real salary calculation.
+    const sampleHoursPerMonth = 160;
+  
+    if (post.jobMeta && /hour|\/hr/i.test(post.jobMeta.payUnit || "")) {
+      post.jobMeta.payMin = Math.round(
+        Number(post.jobMeta.payMin || 0) * sampleHoursPerMonth
+      );
+      post.jobMeta.payMax = Math.round(
+        Number(post.jobMeta.payMax || 0) * sampleHoursPerMonth
+      );
+      post.jobMeta.payUnit = "HKD/month";
+    }
+  
+    for (const key of ["live", "draft"]) {
+      const data = post[key];
+      if (!data) continue;
+  
+      const oldPay = String(data.pay || "");
+      let convertedAmount = null;
+  
+      data.pay = oldPay.replace(hourlyPattern, (_, amount) => {
+        convertedAmount = Math.round(
+          Number(amount.replaceAll(",", "")) * sampleHoursPerMonth
+        );
+  
+        return `HK$${convertedAmount.toLocaleString("en-HK")}/month`;
+      });
+  
+      if (data.payMin == null) {
+        data.payMin = key === "live" && post.jobMeta
+          ? post.jobMeta.payMin
+          : convertedAmount ?? 0;
+      }
+  
+      if (data.payMax == null) {
+        data.payMax = key === "live" && post.jobMeta
+          ? post.jobMeta.payMax
+          : convertedAmount ?? data.payMin;
+      }
+    }
+  }
   function migrate() {
     db.favorites ??= {};
     db.wishlists ??= {};
