@@ -128,6 +128,16 @@
     db.wishlists ??= {};
     db.comparisons ??= {};
     db.reports ??= [];
+    db.premium ??= {};
+    db.messagingTrials ??= {};
+    
+    for (const user of db.users) {
+      if (user.kind === "provider") user.identity = "Company";
+    }
+    
+    for (const post of db.posts) {
+      migrateMonthlyPay(post);
+    }
 
     for (const user of db.users) {
       const parts = user.name.split(/\s+/);
@@ -335,17 +345,21 @@
       ["operations-excel", "u-maya", "sample-operations", "One spreadsheet saved our team hours each week", "In operations at Harbour Studio, I organised incoming requests in Excel and documented the handover. A clear process was more useful than a complicated tool.", 11, 6, 72]
     ];
     const listings = [
-      ["sample-marketing", "u-provider", "Harbour Studio", "Marketing Intern", 8, "Build your first campaign with our team", "Plan social media content, research audiences and report campaign results. A mentor will help you develop your ideas and presentation skills.", "Communication, writing and basic Excel skills.", "Hybrid", 65, ["Business", "Marketing"], ["Communication", "Excel"]],
-      ["sample-software", "u-orbit", "Orbit Analytics", "Software Engineering Intern", 12, "Help build tools that make data useful", "Work on search interfaces, fix small bugs and write tests with our engineering team. Bring curiosity and a small programming project.", "Basic JavaScript or Python and an interest in testing.", "Hybrid", 95, ["Computer Science"], ["JavaScript", "Python"]],
-      ["sample-operations", "u-provider", "Harbour Studio", "Operations Intern", 4, "Make everyday teamwork run more smoothly", "Organise project information, improve handover checklists and support scheduling. This short internship is ideal for someone who enjoys clear communication.", "Organisation, communication and spreadsheet skills.", "Offline", 60, ["Business"], ["Excel", "Communication"]],
-      ["sample-finance", "u-orbit", "Orbit Analytics", "Finance Intern", 10, "Explore the numbers behind a growing business", "Support budget tracking, prepare simple reports and help the finance team understand monthly costs. Learn how a business turns records into decisions.", "Basic accounting knowledge and confidence with Excel.", "Remote", 80, ["Business", "Accounting"], ["Excel", "Accounting"]]
+      ["sample-marketing", "u-provider", "Harbour Studio", "Marketing Intern", 8, "Build your first campaign with our team", "Plan social media content, research audiences and report campaign results. A mentor will help you develop your ideas and presentation skills.", "Communication, writing and basic Excel skills.", "Hybrid", 10400, ["Business", "Marketing"], ["Communication", "Excel"]],
+      ["sample-software", "u-orbit", "Orbit Analytics", "Software Engineering Intern", 12, "Help build tools that make data useful", "Work on search interfaces, fix small bugs and write tests with our engineering team. Bring curiosity and a small programming project.", "Basic JavaScript or Python and an interest in testing.", "Hybrid", 15200, ["Computer Science"], ["JavaScript", "Python"]],
+      ["sample-operations", "u-provider", "Harbour Studio", "Operations Intern", 4, "Make everyday teamwork run more smoothly", "Organise project information, improve handover checklists and support scheduling. This short internship is ideal for someone who enjoys clear communication.", "Organisation, communication and spreadsheet skills.", "Offline", 9600, ["Business"], ["Excel", "Communication"]],
+      ["sample-finance", "u-orbit", "Orbit Analytics", "Finance Intern", 10, "Explore the numbers behind a growing business", "Support budget tracking, prepare simple reports and help the finance team understand monthly costs. Learn how a business turns records into decisions.", "Basic accounting knowledge and confidence with Excel.", "Remote", 12800, ["Business", "Accounting"], ["Excel", "Accounting"]]
     ];
     listings.forEach(([id, owner, company, job, duration, title, body, requirements, arrangement, pay, fields, skills], index) => {
       if (getPost(id)) return;
       db.posts.push({
         id, owner, type: "official", anonymous: false,
         live: { company, job, duration, title, body, requirements,
-          location: "Hong Kong", pay: `HK$${pay}/hour · Sample figure`, deadline: "" },
+          location: "Hong Kong",
+          pay: `HK$${pay.toLocaleString("en-HK")}/month · Sample figure`,
+          payMin: pay,
+          payMax: pay,
+          deadline: "" },
         draft: null, review: "live", access: "none", reason: "", closed: false,
         likes: [], sampleLikes: 6 + index * 4, sampleFavorites: 2 + index,
         views: 40 + index * 23, questions: [],
@@ -381,9 +395,9 @@
   function prepareJob(post) {
     post.jobMeta ??= {
       arrangement: post.id === "p-orbit" ? "Hybrid" : "Offline",
-      payMin: post.id === "p-orbit" ? 75 : 70,
-      payMax: post.id === "p-orbit" ? 90 : 85,
-      payUnit: "HKD/hour",
+      payMin: post.live?.payMin ?? (post.id === "p-orbit" ? 12000 : 11200),
+      payMax: post.live?.payMax ?? (post.id === "p-orbit" ? 14400 : 13600),
+      payUnit: "HKD/month",
       fields: post.id === "p-orbit" ? ["Data Science", "Computer Science"] : ["Business", "Design"],
       skills: post.id === "p-orbit" ? ["SQL", "Excel"] : ["Communication", "Figma"],
       graduation: ["2026", "2027", "2028"],
@@ -407,6 +421,15 @@
         "Mentorship": [29, 1]
       }
     };
+    post.jobMeta.payUnit = "HKD/month";
+    
+    if (Number.isFinite(post.live?.payMin)) {
+      post.jobMeta.payMin = post.live.payMin;
+    }
+    
+    if (Number.isFinite(post.live?.payMax)) {
+      post.jobMeta.payMax = post.live.payMax;
+    }
     post.reviews ??= [];
     prepareItems(post.reviews);
     return post;
@@ -1651,7 +1674,7 @@
   const emptyJobFilters = () => ({
     employer: [], position: [], location: [], arrangement: [],
     duration: [], field: [], skills: [], treatments: [], keywords: [],
-    minPay: 0, maxPay: 300, rating: "", includeOpenField: false
+    minPay: 0, maxPay: 90000, rating: "", includeOpenField: false
   });
 
   let jobFilters = emptyJobFilters();
@@ -1713,6 +1736,8 @@
       .toLowerCase().includes(query)) return false;
 
     for (const key of Object.keys(FILTER_NAMES)) {
+      // Company management never filters by another employer.
+      if (provider() && key === "employer") continue;
       const values = applied[key] || [];
       if (!values.length) continue;
       const candidates = jobValues(post, key);
@@ -1727,9 +1752,14 @@
         post.jobMeta.payMin > Number(applied.maxPay)) return false;
 
     if (applied.rating !== "") {
-      const [min, max] = applied.rating.split("-").map(Number);
       const rating = overall(post);
-      if (rating < min || rating > max) return false;
+
+      if (applied.rating === "gt4.5") {
+        if (rating <= 4.5) return false;
+      } else {
+        const [min, max] = applied.rating.split("-").map(Number);
+        if (rating < min || rating > max) return false;
+      }
     }
     return true;
   }
@@ -1761,7 +1791,7 @@
       <p class="ic-job-company">${esc(data.company)} ${post.closed ? '<span class="badge">Closed</span>' : ""}</p>
       <div class="ic-job-tags">
         <span>${icon("pin")}${esc(data.location)}</span><span>${icon("computer")}${esc(meta.arrangement)}</span>
-        <span>${icon("calendar")}${data.duration} weeks</span><span>${icon("clock")}HK$${meta.payMin}–${meta.payMax}/hr</span>
+        <span>${icon("calendar")}${data.duration} weeks</span><span>${icon("clock")}HK$${meta.payMin.toLocaleString("en-HK")}–${meta.payMax.toLocaleString("en-HK")}/mo</span>
       </div>
       ${data.deadline ? `<p class="muted">Apply by ${esc(data.deadline)}</p>` : ""}
       <div class="ic-job-compare">${xb(`${icon("compare")} ${compared ? "Added to comparison" : "Compare"}`, "compare-toggle", post.id)}</div>
@@ -1842,13 +1872,17 @@
             <h2>Filters</h2>${xb("×", "close-modal", "", "secondary", 'aria-label="Close filters"')}
           </div>
           <div class="row">
-            ${xb("Apply AI-recommended filters", "filter-ai")}
+            ${provider() ? "" : xb("Apply AI-recommended filters", "filter-ai")}
             ${xb("Clear all", "filter-clear-all")}
           </div>
-          <p class="ic-subtle">Demo presets—not actual AI predictions.</p>
+          ${provider()
+            ? '<p class="ic-subtle">Filter your company’s internships.</p>'
+            : '<p class="ic-subtle">Demo presets—not actual AI predictions.</p>'}
         </div>
 
-        ${Object.entries(FILTER_NAMES).map(([key, label]) => `
+        ${Object.entries(FILTER_NAMES)
+          .filter(([key]) => !provider() || key !== "employer")
+          .map(([key, label]) => `
           <section class="ic-filter-group">
             <label for="filter-${key}">${label}</label>
             <div class="ic-filter-input">
@@ -1880,19 +1914,32 @@
           </section>
         `).join("")}
 
-        <h3>Pay range · HKD/hour</h3>
-        <p class="muted">All sample listings use the same hourly currency/unit.</p>
+        <h3>Monthly pay range · HKD/month</h3>
+        <p class="muted">
+          All sample listings use monthly Hong Kong dollar amounts.
+        </p>
+        
         <div class="ic-range">
-          <label>Lower: <output id="minPayOutput">${draftFilters.minPay}</output>
-            <input name="minPay" type="range" min="0" max="300" step="5" value="${draftFilters.minPay}">
+          <label>
+            Lower: HK$<output id="minPayOutput">${draftFilters.minPay.toLocaleString("en-HK")}</output>
+            <input name="minPay" type="range"
+              min="0" max="100000" step="500"
+              value="${draftFilters.minPay}">
           </label>
-          <label>Upper: <output id="maxPayOutput">${draftFilters.maxPay}</output>
-            <input name="maxPay" type="range" min="0" max="300" step="5" value="${draftFilters.maxPay}">
+        
+          <label>
+            Upper: HK$<output id="maxPayOutput">${draftFilters.maxPay.toLocaleString("en-HK")}</output>
+            <input name="maxPay" type="range"
+              min="0" max="100000" step="500"
+              value="${draftFilters.maxPay}">
           </label>
         </div>
         ${selectField("Ratings", "rating", [
           ["", "Any rating"], ["0-1", "0–1 stars"], ["1-2", "1–2 stars"],
-          ["2-3", "2–3 stars"], ["3-4", "3–4 stars"], ["4-5", "4–5 stars"]
+          ["2-3", "2–3 stars"],
+          ["3-4", "3–4 stars"],
+          ["4-4.5", "4–4.5 stars"],
+          ["gt4.5", ">4.5 stars"]
         ], draftFilters.rating)}
         <p class="ic-subtle">
           Keywords are OR-matched within each category and AND-matched between categories.
@@ -2957,12 +3004,14 @@
 
     if (event.target.name === "minPay" && form?.dataset.form === "x-filters") {
       draftFilters.minPay = Number(event.target.value);
-      $("minPayOutput").textContent = event.target.value;
+      $("minPayOutput").textContent =
+        Number(event.target.value).toLocaleString("en-HK");
     }
 
     if (event.target.name === "maxPay" && form?.dataset.form === "x-filters") {
       draftFilters.maxPay = Number(event.target.value);
-      $("maxPayOutput").textContent = event.target.value;
+      $("maxPayOutput").textContent =
+        Number(event.target.value).toLocaleString("en-HK");
     }
   });
 
