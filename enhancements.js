@@ -625,14 +625,7 @@
       <p class="preserve ic-social-body">${esc(data.body)}</p>
       <p class="ic-social-context">${icon("building")}${esc(data.company)} · ${esc(data.job)}${data.duration ? ` · ${esc(data.duration)} weeks` : ""}</p>
       ${post.closed ? '<p class="badge">Applications closed</p>' : ""}
-      <footer class="ic-social-actions">
-        ${xb(`${icon("like")} ${likesOf(post)}`, "like", reference, "secondary",
-          `aria-label="Like post" aria-pressed="${post.likes?.includes(currentUserId) || false}"`)}
-        ${xb(`${icon("bookmark")} ${favoriteCount("post", post)}`,
-          "favorite", reference, "secondary",
-          `aria-label="Save post" aria-pressed="${isFavorite("post", post.id)}"`)}
-        ${xb(`${icon("chat")} ${post.questions?.length || 0}`, "post-open", post.id, "link-button", 'aria-label="Read post and comments"')}
-      </footer>
+      ${engagementActions(post, "post")}
     </article>`;
   }
 
