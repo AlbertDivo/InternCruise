@@ -7,6 +7,8 @@
   const ICONS = {
     ship: `<path d="M9.5 5V2.5h5V5M6 10V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3M2.5 12 12 9l9.5 3c-1.2 4.7-3.8 7-6.7 6.5L12 18l-2.8.5C6.3 19 3.7 16.7 2.5 12ZM12 9v9M1.5 21c2-1.5 3-1.5 5 0s3 1.5 5 0 3-1.5 5 0 3 1.5 5 0"/><path d="M9 7.5h.5m5 0h.5" stroke-width="1.8"/>`,
     heart: `<path d="M20 4c-3-2-6 0-8 2-2-2-5-4-8-2-5 4 0 10 8 16 8-6 13-12 8-16Z"/>`,
+    eye: `<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/>
+      <circle cx="12" cy="12" r="3"/>`,
     bookmark: `<path d="M6 3h12v19l-6-4-6 4V3Z"/>`,
     like: `<path d="M8 10 12 3c2 0 3 2 2 5h5c2 0 2 2 1 4l-2 7H8V10ZM3 10h5v10H3Z"/>`,
     chat: `<path d="M21 11c0 5-4 8-9 8H8l-5 3 1-6a8 8 0 0 1-2-5c0-5 4-8 10-8s9 3 9 8Z"/>`,
@@ -18,8 +20,11 @@
       <path d="M5.5 19c.8-5 12.2-5 13 0"/>`,
     mail: `<rect x="2" y="4" width="20" height="16" rx="3"/>
       <path d="m3 6 9 7 9-7"/>`,
-    posts: `<path d="M4 3h11v18H4zM7 7h5M7 11h4M7 15h3"/>
-      <path d="m12 18 9-14 1 6-7 7-3 1Zm0 0-1 3"/>`,
+    posts: `<rect x="3" y="3" width="12" height="18" rx="2"/>
+      <path d="M6 7h5M6 11h3M6 15h2"/>
+      <path d="M12 17c-.3-4.7 2.2-10.8 6.8-12.4
+        1.4-.5 2.3.3 2.1 1.7-.5 4.8-4 9.2-8.9 10.7Z"/>
+      <path d="M11 20c1.2-4.1 3.7-8.1 6.9-11.4"/>`,
     jobs: `<rect x="2" y="6" width="17" height="13" rx="2"/>
       <path d="M7 6V3h7v3M2 11h16"/>
       <path d="m13 18 5-3 5 3-5 3-5-3Zm3 2v2h4v-2M23 18v4"/>`,
@@ -726,14 +731,77 @@
   }
 
   function engagementActions(item, kind, parent = "") {
-    return `<div class="ic-actions">
-      ${xb(`${item.likes?.includes(currentUserId) ? "♥" : "♡"} ${likesOf(item)}`,
-        "like", `${kind}|${parent}|${item.id}`)}
-      <span class="muted">◉ ${item.views || 0}</span>
-      ${xb(`${isFavorite(kind, item.id) ? "★" : "☆"} ${favoriteCount(kind, item)}`,
-        "favorite", `${kind}|${parent}|${item.id}`, "secondary",
-        `aria-label="Favorite" aria-pressed="${isFavorite(kind, item.id)}"`)}
-      ${xb(`${icon("warning")} Report`, "report", `${kind}|${parent}|${item.id}`)}
+    const reference = `${kind}|${parent}|${item.id}`;
+    const liked = item.likes?.includes(currentUserId) || false;
+    const favorited = isFavorite(kind, item.id);
+
+    let replies = 0;
+    let replyAction = "reply-to";
+    let replyTarget = reference;
+    let replyLabel = "Replies";
+
+    if (kind === "post") {
+      replies = (item.questions || []).reduce(
+        (total, question) => total + 1 + (question.replies || []).length,
+        0
+      );
+      replyAction = "post-open";
+      replyTarget = item.id;
+      replyLabel = "Comments";
+    } else if (kind === "forum") {
+      replies = (item.replies || []).length;
+      replyAction = "forum-open";
+      replyTarget = item.id;
+    } else {
+      const items = kind === "forum-reply"
+        ? getForum(parent)?.replies || []
+        : getPost(parent)?.reviews || [];
+
+      replies = items.filter(reply => reply.parent === item.id).length;
+    }
+
+    const stat = (image, count) =>
+      `${icon(image)}<span>${esc(count)}</span>`;
+
+    return `<div class="ic-actions ic-engagement" aria-label="Content interactions">
+      ${xb(
+        stat("heart", likesOf(item)),
+        "like",
+        reference,
+        "secondary ic-engagement-stat ic-like",
+        `aria-label="${liked ? "Unlike" : "Like"} · ${likesOf(item)} likes"
+         aria-pressed="${liked}" title="Likes"`
+      )}
+
+      ${xb(
+        stat("star", favoriteCount(kind, item)),
+        "favorite",
+        reference,
+        "secondary ic-engagement-stat ic-favorite",
+        `aria-label="${favorited ? "Remove favorite" : "Favorite"} · ${favoriteCount(kind, item)} favorites"
+         aria-pressed="${favorited}" title="Favorites"`
+      )}
+
+      ${xb(
+        stat("chat", replies),
+        replyAction,
+        replyTarget,
+        "secondary ic-engagement-stat",
+        `aria-label="${replyLabel}: ${replies}" title="${replyLabel}"`
+      )}
+
+      <span class="ic-engagement-stat ic-view-count"
+        aria-label="${esc(item.views || 0)} views" title="Views">
+        ${stat("eye", item.views || 0)}
+      </span>
+
+      ${xb(
+        `${icon("warning")}<span>Report</span>`,
+        "report",
+        reference,
+        "link-button ic-report",
+        'aria-label="Report this content"'
+      )}
     </div>`;
   }
 
@@ -743,12 +811,6 @@
       <p class="preserve">${esc(post.body.slice(0, 180))}${post.body.length > 180 ? "…" : ""}</p>
       ${statusMarkup(post.resolved)}
       <p class="muted">${esc(authorName(post))}</p>
-      <div class="ic-meta">
-        <span>${post.replies.length} replies</span>
-        <span>${likesOf(post)} Likes</span>
-        <span>${post.views || 0} Views</span>
-        <span>${favoriteCount("forum", post)} Favorites</span>
-      </div>
       <div>${tagsMarkup(post.tags)}</div>
       ${engagementActions(post, "forum")}
       ${xb("Open discussion →", "forum-open", post.id)}
