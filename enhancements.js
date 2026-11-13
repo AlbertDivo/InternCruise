@@ -512,9 +512,16 @@
   document.body.append(modal);
 
   function positionPhoneFilters() {
-    if (!modal.open || !modal.classList.contains("ic-filter-dialog")) return;
+    const phoneScoped = modal.classList.contains("ic-filter-dialog") ||
+      modal.classList.contains("ic-phone-overlay");
+
+    if (!modal.open || !phoneScoped) return;
+
     const phone = document.querySelector(".phone");
+    if (!phone) return;
+
     const bounds = phone.getBoundingClientRect();
+
     modal.style.left = `${bounds.left + phone.clientLeft}px`;
     modal.style.top = `${bounds.top + phone.clientTop}px`;
     modal.style.width = `${phone.clientWidth}px`;
@@ -530,15 +537,40 @@
   });
 
   function showModal(title, content, className = "") {
+    // Remove positioning left over from a previous phone-scoped dialog.
+    filterResize.disconnect();
+    window.removeEventListener("scroll", positionPhoneFilters, true);
+    window.removeEventListener("resize", positionPhoneFilters);
+    modal.removeAttribute("style");
+
     modal.className = className;
     modal.setAttribute("aria-label", title);
-    modal.innerHTML = `<div class="${className === "ic-filter-dialog" ? "ic-filter-panel" : className ? "" : "stack"}">
-      ${className ? "" : `<div class="row between"><h2>${esc(title)}</h2>
-        ${xb("×", "close-modal", "", "secondary", 'aria-label="Close dialog"')}</div>`}
+
+    const isFilter = className === "ic-filter-dialog";
+    const isPhoneOverlay = className === "ic-phone-overlay";
+    const wrapperClass = isFilter
+      ? "ic-filter-panel"
+      : isPhoneOverlay ? "ic-phone-modal-card" : "stack";
+
+    modal.innerHTML = `<div class="${wrapperClass}">
+      ${isFilter ? "" : `
+        <div class="row between ic-modal-heading">
+          <h2>${esc(title)}</h2>
+          ${xb(
+            "×",
+            "close-modal",
+            "",
+            "secondary",
+            'aria-label="Close dialog"'
+          )}
+        </div>
+      `}
       ${content}
     </div>`;
+
     if (!modal.open) modal.showModal();
-    if (className === "ic-filter-dialog") {
+
+    if (isFilter || isPhoneOverlay) {
       positionPhoneFilters();
       filterResize.observe(document.querySelector(".phone"));
       window.addEventListener("scroll", positionPhoneFilters, true);
