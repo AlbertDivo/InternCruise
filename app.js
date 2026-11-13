@@ -51,7 +51,7 @@ function seed() {
     },
     {
       id: "u-provider", username: "provider", name: "Alex Lee",
-      kind: "provider", identity: "Company employee", verified: true,
+      kind: "provider", identity: "Company", verified: true,
       org: "Harbour Studio", major: "People & Talent",
       location: "Hong Kong",
       headline: "Helping early-career designers find their starting point",
@@ -60,7 +60,7 @@ function seed() {
     },
     {
       id: "u-orbit", username: "orbit", name: "Morgan Lau",
-      kind: "provider", identity: "Company employee", verified: true,
+      kind: "provider", identity: "Company", verified: true,
       org: "Orbit Analytics", major: "Recruitment",
       location: "Hong Kong", headline: "Data internships with real projects",
       bio: "Our interns work alongside analysts and engineers.",
@@ -85,7 +85,9 @@ function seed() {
         job: "Product Design Intern",
         duration: 6,
         location: "Hong Kong",
-        pay: "HK$70/hour · Sample figure",
+        pay: "HK$11,200–13,600/month · Sample figure",
+        payMin: 11200,
+        payMax: 13600,
         deadline: "",
         body: "Help our product team design onboarding screens, run usability tests and present your findings.",
         requirements: "University student; curiosity about design; a small portfolio is welcome."
@@ -96,7 +98,9 @@ function seed() {
         job: "Data Analyst Intern",
         duration: 12,
         location: "Hong Kong",
-        pay: "HK$75/hour · Sample figure",
+        pay: "HK$12,000–14,400/month · Sample figure",
+        payMin: 12000,
+        payMax: 14400,
         deadline: "",
         body: "Clean datasets, write SQL queries and build a dashboard with support from the analytics team.",
         requirements: "Basic spreadsheet skills. Introductory SQL is helpful."
@@ -422,7 +426,7 @@ function signupPage() {
       ${field("Username, fictional email or phone", "username")}
       ${field("Display name", "name")}
       ${selectField("Identity / verification route", "identity", [
-        "Student", "Alumni", "Company employee"
+        "Student", "Alumni", "Company"
       ], "Student")}
       ${field("School or company name", "org")}
       ${field("Demo password", "password", "", "password", true, 'autocomplete="off"')}
@@ -445,7 +449,7 @@ function verifyPage() {
       ${selectField("Proof to simulate", "proof", [
         ["invalid", "Invalid sample document"],
         ["valid", user.kind === "provider"
-          ? "Valid sample company-employee proof"
+          ? "Valid sample company verification documents"
           : "Valid sample student / alumni proof"]
       ], "invalid")}
       <button class="wide">Submit sample proof</button>
@@ -1484,7 +1488,7 @@ document.addEventListener("submit", async (event) => {
     const identity = text("identity");
     db.users.push({
       id: uid(), username, name: text("name"), identity,
-      kind: identity === "Company employee" ? "provider" : "participant",
+      kind: identity === "Company" ? "provider" : "participant",
       verified: false, org: text("org"), major: "", location: "",
       headline: "", bio: "", interests: "",
       alias: `Anonymous ${101 + db.users.length}`
