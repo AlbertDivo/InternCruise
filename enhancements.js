@@ -768,7 +768,14 @@
       ${xb("Messages", "navigate", "inbox")}
       ${xb("Notifications", "navigate", "updates")}
       ${xb("＋ Start chat", "navigate", "people")}
-    </div>`;
+    </div>
+  
+    ${messagingTrialBalance() ? `
+      <div class="ic-inbox-reward">
+        <span>${messagingTrialBalance()} free messaging trials</span>
+        ${xb("Use a trial", "navigate", "trial-people", "link-button")}
+      </div>
+    ` : ""}`;
   }
 
   pages.inbox = () => `${heading("Inbox")}${inboxTabs()}${oldMessagesPage()}`;
