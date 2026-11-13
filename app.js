@@ -875,32 +875,83 @@ function workspacePage() {
 
 function listingPage() {
   if (!provider()) return deniedPage();
+
   const post = route.id ? getPost(route.id) : null;
+
   if (post && (
     post.owner !== currentUserId ||
-    post.review === "pending" ||
-    (post.live && post.access !== "approved")
+    post.review === "pending"
   )) return deniedPage();
 
   const data = post?.draft ?? post?.live ?? {
-    title: "", company: me().org, job: "", duration: 6,
-    location: "Hong Kong", pay: "", deadline: "", body: "", requirements: ""
+    title: "",
+    company: me().org,
+    job: "",
+    duration: 6,
+    location: "Hong Kong",
+    pay: "",
+    payMin: 0,
+    payMax: 0,
+    deadline: "",
+    body: "",
+    requirements: ""
   };
 
+  const minPay = data.payMin ?? post?.jobMeta?.payMin ?? 0;
+  const maxPay = data.payMax ?? post?.jobMeta?.payMax ?? minPay;
+
   return `${heading(post ? "Edit internship" : "New internship listing")}
+    <p class="muted">
+      New listings and changes require platform approval before publication.
+      When you edit a published listing, its current approved version stays
+      public until the update is approved.
+    </p>
+
     <form data-form="listing" data-id="${esc(post?.id ?? "")}" data-dirty>
       ${field("Company", "company", me().org, "text", true, "readonly")}
       ${field("Listing title", "title", data.title)}
-      ${field("Job title", "job", data.job)}
-      ${field("Duration (weeks)", "duration", data.duration, "number", true, 'min="1" max="104" step="1"')}
+      ${field("Position name", "job", data.job)}
+
+      ${field(
+        "Duration (weeks)", "duration", data.duration, "number", true,
+        'min="1" max="104" step="1"'
+      )}
+
       ${field("Location / working arrangement", "location", data.location)}
-      ${field("Pay / allowance", "pay", data.pay, "text", false)}
-      ${field("Application deadline", "deadline", data.deadline, "date", false)}
+
+      <fieldset>
+        <legend>Monthly pay · HKD/month</legend>
+
+        ${field(
+          "Minimum monthly pay", "payMin", minPay, "number", true,
+          'min="0" max="100000" step="1"'
+        )}
+
+        ${field(
+          "Maximum monthly pay", "payMax", maxPay, "number", true,
+          'min="0" max="100000" step="1"'
+        )}
+
+        <p class="muted">
+          Enter the same amount twice for a fixed monthly salary.
+          All amounts in this prototype are fictional.
+        </p>
+      </fieldset>
+
+      ${field(
+        "Application deadline", "deadline", data.deadline, "date", false
+      )}
+
       ${area("Job description", "body", data.body)}
       ${area("Requirements", "requirements", data.requirements, false)}
+
       <div class="row">
-        <button name="decision" value="draft" class="secondary">Save draft</button>
-        <button name="decision" value="submit">Submit for review</button>
+        <button name="decision" value="draft" class="secondary">
+          Save draft
+        </button>
+        <button name="decision" value="submit">
+          Submit for approval
+        </button>
       </div>
     </form>`;
 }
@@ -1298,23 +1349,10 @@ document.addEventListener("click", async (event) => {
     return go("listing", { id });
   }
 
-  if (action === "request-edit") {
-    const post = getPost(id);
-    if (!post || post.owner !== currentUserId || !provider() ||
-        !post.live || post.review === "pending") return;
-    post.access = "requested";
-    post.reason = "";
-    persist();
-    render();
-    tell("Request sent. Use the Platform review simulator outside the phone.");
-    return;
-  }
-
   if (action === "submit-listing") {
     const post = getPost(id);
     if (!post || post.owner !== currentUserId || !provider() ||
-        post.review === "pending" ||
-        (post.live && post.access !== "approved")) return;
+        post.review === "pending") return;
     if (!queueListing(post)) return;
     persist();
     render();
