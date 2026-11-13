@@ -605,14 +605,63 @@
       ${button("Log in", "login", "", "secondary wide")}</div>
     <p class="welcome-footnote">Classroom demo · Fictional data</p>`;
 
+  function messagingTrialBalance() {
+    return Math.max(0, Number(db.messagingTrials?.[currentUserId]) || 0);
+  }
+
+  function homeExplorePosts() {
+    const posts = [
+      {
+        category: "Internship advice",
+        title: "A small checklist for your first day",
+        body: "Sample advice: prepare a short introduction, write down a few questions and think about what you would like to learn."
+      },
+      {
+        category: "App using guide",
+        title: "Plan your next step with InternCruise",
+        body: "Example walkthrough: explore internships, save interesting roles to your wishlist and try comparing two opportunities."
+      },
+      {
+        category: "Industry trends",
+        title: "Imagining tomorrow’s internship skills",
+        body: "Fictional trend story: our imaginary workplaces are exploring new ways to combine communication, creative thinking and digital tools."
+      }
+    ];
+
+    return `<section class="ic-home-explore" aria-labelledby="homeExploreTitle">
+      <h2 id="homeExploreTitle">What’s for you to explore?</h2>
+  
+      <p class="ic-explore-disclaimer">
+        Nothing in these sample official posts is factually credible.
+        All content is solely for demonstration purposes.
+      </p>
+
+      ${posts.map(post => `
+        <article class="card ic-editorial-post">
+          <div class="ic-editorial-author">
+            ${icon("ship")}
+            <strong>InternCruise</strong>
+            <span class="badge">Official · Demo</span>
+          </div>
+          <p class="ic-editorial-category">${esc(post.category)}</p>
+          <h3>${esc(post.title)}</h3>
+          <p>${esc(post.body)}</p>
+        </article>
+      `).join("")}
+    </section>`;
+  }
+
   pages.home = () => `${heading("Your next starting point", "", false)}
     <p>Explore opportunities, learn from other students and build your next step.</p>
+  
     <div class="home-journey" aria-hidden="true">${journeyArt}</div>
+  
     <section class="card">
       <h2>Internship information list</h2>
       <p>Browse opportunities, compare roles and keep a wishlist.</p>
       ${xb("Explore internships →", "navigate", "internships", "wide")}
     </section>
+  
     <section class="card">
       <h2>Your community</h2>
       <p>Find experiences in Posts, or ask a question in Forum.</p>
@@ -620,7 +669,26 @@
         ${xb("Explore posts", "navigate", "posts")}
         ${xb("Visit Forum", "navigate", "forum")}
       </div>
-    </section>`;
+    </section>
+  
+    <section class="card ic-reward-section">
+      <h2>Advertisements for rewards</h2>
+      <p>Watch advertisements here to earn access to our VIP functions.</p>
+  
+      ${xb("Watch ads", "watch-ad", "", "wide")}
+  
+      ${messagingTrialBalance() ? `
+        <p class="muted">
+          ${messagingTrialBalance()} free private messaging
+          ${messagingTrialBalance() === 1 ? "trial" : "trials"} available.
+        </p>
+        ${xb("Use a messaging trial", "navigate", "trial-people", "link-button")}
+      ` : ""}
+  
+      <p class="ic-subtle">Demo rewards only · No real advertisements or purchases.</p>
+    </section>
+  
+    ${homeExplorePosts()}`;
 
   // Preserve the previous feed, but move it to Posts.
   let postsMode = "recommended";
@@ -2051,6 +2119,322 @@
       </div>
       <p class="muted">Initial counts are for demonstration purposes only.</p>`);
   }
+  let rewardAdSession = null;
+  let rewardAdTimer = null;
+  let stopRewardAdPreview = null;
+  let trialChatBusy = false;
+  
+  pages["reward-ad"] = () => {
+    const session = rewardAdSession;
+  
+    if (!session || session.owner !== currentUserId) {
+      return `${heading("Advertisement")}
+        <p>Start an advertisement from Home to earn a demo reward.</p>
+        ${xb("Back to Home", "navigate", "home", "wide")}`;
+    }
+  
+    return `<section class="ic-reward-ad" aria-label="Reward advertisement">
+      <div class="ic-ad-media" aria-hidden="true">
+        <canvas id="rewardAdCanvas" width="720" height="1100"></canvas>
+        <video id="rewardAdVideo" muted autoplay playsinline hidden></video>
+      </div>
+  
+      <div class="ic-ad-top">
+        <span class="ic-ad-badge">Advertisement · Fictional demo</span>
+        ${xb("×", "ad-exit", "", "ic-ad-close", 'aria-label="Leave advertisement"')}
+      </div>
+  
+      <div class="ic-ad-copy">
+        <span class="ic-ad-brand">${icon("ship")} InternCruise</span>
+        <h1>Your next<br>journey starts here.</h1>
+        <p>Explore. Learn. Set sail.</p>
+      </div>
+  
+      <div class="ic-ad-bottom">
+        <p id="rewardAdStatus" role="status" aria-live="polite">
+          Watch for 30 seconds to earn your reward.
+        </p>
+  
+        <progress id="rewardAdProgress" max="30" value="0"
+          aria-label="Advertisement watch time"></progress>
+  
+        ${xb("Skip", "ad-skip", "", "wide", 'id="rewardAdSkip"')}
+  
+        <p class="ic-ad-disclaimer">
+          skip is only for ease of demonstration; actual ads will be 30 seconds
+        </p>
+  
+        <p class="ic-ad-demo-note">
+          Browser-generated demo video · No real advertiser
+        </p>
+      </div>
+    </section>`;
+  };
+  
+  // Generate an animated scene and stream it into a video element.
+  // Browsers without canvas video-stream support display the animated canvas.
+  function startRewardAdPreview() {
+    const canvas = $("rewardAdCanvas");
+    const video = $("rewardAdVideo");
+    if (!canvas || !video) return () => {};
+  
+    const context = canvas.getContext("2d");
+    if (!context) return () => {};
+  
+    let stopped = false;
+    let frame = 0;
+    let stream = null;
+    const start = performance.now();
+    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  
+    function draw(now) {
+      if (stopped) return;
+  
+      const time = reducedMotion ? 0 : (now - start) / 1000;
+      const width = canvas.width;
+      const height = canvas.height;
+  
+      const sky = context.createLinearGradient(0, 0, 0, height);
+      sky.addColorStop(0, "#e6f7ee");
+      sky.addColorStop(0.58, "#cbe9dc");
+      sky.addColorStop(1, "#68ab96");
+      context.fillStyle = sky;
+      context.fillRect(0, 0, width, height);
+  
+      // Sun.
+      context.fillStyle = "#fff1c0";
+      context.beginPath();
+      context.arc(555, 340, 65, 0, Math.PI * 2);
+      context.fill();
+  
+      // Layered water.
+      for (let layer = 0; layer < 4; layer++) {
+        const level = 670 + layer * 70;
+        context.beginPath();
+        context.moveTo(0, height);
+  
+        for (let x = 0; x <= width; x += 8) {
+          const y = level + Math.sin(x / 80 + time + layer) * 13;
+          context.lineTo(x, y);
+        }
+  
+        context.lineTo(width, height);
+        context.closePath();
+        context.fillStyle = ["#a9dac8", "#8bcab5", "#6cb49e", "#509883"][layer];
+        context.fill();
+      }
+  
+      // Softly cruising ship.
+      context.save();
+      context.translate(
+        360 + Math.sin(time / 3) * 35,
+        660 + Math.sin(time * 1.4) * 6
+      );
+      context.rotate(Math.sin(time) * 0.015);
+      context.lineJoin = "round";
+      context.lineCap = "round";
+      context.lineWidth = 7;
+      context.strokeStyle = "#086b58";
+      context.fillStyle = "#fcfffa";
+  
+      context.beginPath();
+      context.moveTo(-170, 0);
+      context.lineTo(180, 0);
+      context.quadraticCurveTo(140, 83, 98, 83);
+      context.lineTo(-106, 83);
+      context.quadraticCurveTo(-145, 75, -170, 0);
+      context.closePath();
+      context.fill();
+      context.stroke();
+  
+      context.fillRect(-110, -62, 218, 62);
+      context.strokeRect(-110, -62, 218, 62);
+      context.fillRect(-55, -112, 106, 50);
+      context.strokeRect(-55, -112, 106, 50);
+  
+      context.fillStyle = "#b5dfce";
+      for (let x = -75; x <= 75; x += 50) {
+        context.beginPath();
+        context.arc(x, -30, 9, 0, Math.PI * 2);
+        context.fill();
+      }
+  
+      context.restore();
+  
+      if (!reducedMotion) frame = requestAnimationFrame(draw);
+    }
+  
+    draw(performance.now());
+  
+    try {
+      if (typeof canvas.captureStream === "function") {
+        stream = canvas.captureStream(reducedMotion ? 1 : 24);
+        video.srcObject = stream;
+  
+        video.play().then(() => {
+          if (!stopped) video.hidden = false;
+        }).catch(() => {
+          // The animated canvas remains visible if playback is unavailable.
+        });
+      }
+    } catch {
+      // Canvas fallback remains available.
+    }
+  
+    return () => {
+      stopped = true;
+      cancelAnimationFrame(frame);
+      video.pause();
+      video.srcObject = null;
+      video.hidden = true;
+      stream?.getTracks().forEach(track => track.stop());
+    };
+  }
+  
+  function updateRewardAdStatus() {
+    const session = rewardAdSession;
+    if (!session) return;
+  
+    const remaining = Math.max(0, Math.ceil((30000 - session.elapsed) / 1000));
+    const progress = $("rewardAdProgress");
+    const status = $("rewardAdStatus");
+    const skip = $("rewardAdSkip");
+  
+    if (progress) progress.value = session.elapsed / 1000;
+  
+    const message = session.awarded
+      ? "Reward earned. You can return to Home."
+      : `${remaining} seconds remaining`;
+  
+    if (status && status.textContent !== message) status.textContent = message;
+  
+    if (skip) {
+      skip.disabled = session.awarded;
+      skip.textContent = session.awarded ? "Reward earned ✓" : "Skip";
+    }
+  }
+  
+  function finishRewardAd() {
+    const session = rewardAdSession;
+  
+    if (
+      route.name !== "reward-ad" ||
+      !session ||
+      session.owner !== currentUserId ||
+      session.awarded
+    ) return;
+  
+    // Set this before saving/showing the dialog to prevent duplicate rewards.
+    session.awarded = true;
+    session.elapsed = 30000;
+  
+    clearInterval(rewardAdTimer);
+    rewardAdTimer = null;
+    stopRewardAdPreview?.();
+    stopRewardAdPreview = null;
+  
+    db.messagingTrials ??= {};
+    db.messagingTrials[currentUserId] = messagingTrialBalance() + 3;
+  
+    selfNotice(
+      "Congratulations! You earned 3 free private messaging trials. Use it anytime.",
+      { name: "trial-people" }
+    );
+  
+    persist();
+    updateRewardAdStatus();
+  
+    showModal("Reward earned", `
+      <div class="ic-reward-success">${icon("ship")}</div>
+  
+      <p class="ic-reward-message">
+        Congratulations! You earned 3 free private messaging trials. Use it anytime.
+      </p>
+  
+      <p class="muted">
+        Available balance: ${messagingTrialBalance()} trials.
+        Demo rewards are saved in this browser.
+      </p>
+  
+      <div class="stack">
+        ${xb("Use a messaging trial", "ad-use-trial", "", "wide")}
+        ${xb("Back to Home", "ad-exit", "", "secondary wide")}
+      </div>
+    `, "ic-phone-overlay");
+  }
+  
+  function syncRewardAd() {
+    clearInterval(rewardAdTimer);
+    rewardAdTimer = null;
+  
+    stopRewardAdPreview?.();
+    stopRewardAdPreview = null;
+  
+    if (
+      route.name !== "reward-ad" ||
+      rewardAdSession?.owner !== currentUserId
+    ) {
+      rewardAdSession = null;
+      return;
+    }
+  
+    const session = rewardAdSession;
+    updateRewardAdStatus();
+    stopRewardAdPreview = startRewardAdPreview();
+  
+    if (session.awarded) {
+      stopRewardAdPreview?.();
+      stopRewardAdPreview = null;
+      return;
+    }
+  
+    session.lastTick = performance.now();
+  
+    rewardAdTimer = setInterval(() => {
+      const now = performance.now();
+      const elapsed = now - session.lastTick;
+      session.lastTick = now;
+  
+      if (document.hidden || route.name !== "reward-ad") return;
+  
+      session.elapsed = Math.min(30000, session.elapsed + elapsed);
+      updateRewardAdStatus();
+  
+      if (session.elapsed >= 30000) finishRewardAd();
+    }, 200);
+  }
+  
+  // Do not count time spent in a hidden browser tab.
+  document.addEventListener("visibilitychange", () => {
+    if (rewardAdSession) rewardAdSession.lastTick = performance.now();
+  });
+  
+  pages["trial-people"] = () => `${heading("Use a messaging trial")}
+    <p class="muted">
+      ${messagingTrialBalance()} free trials available.
+      One trial opens one new direct demo conversation.
+      Existing conversations do not consume a trial.
+    </p>
+  
+    ${messagingTrialBalance() ? `
+      ${db.users.filter(user =>
+        user.verified && user.id !== currentUserId
+      ).map(user => `
+        <article class="card">
+          <div class="row">
+            ${avatar(user)}
+            <div class="grow">
+              <strong>${esc(actorName(user.id))}</strong>
+              <p class="muted">${esc(user.org)}</p>
+            </div>
+          </div>
+          ${xb("Start chat with a trial", "trial-chat", user.id)}
+        </article>
+      `).join("")}
+    ` : `
+      <p class="empty">Watch a demo advertisement to earn more trials.</p>
+      ${xb("Back to Home", "navigate", "home", "wide")}
+    `}`;
   function toggleAccountList(key, id) {
     db[key][currentUserId] ??= [];
     const values = db[key][currentUserId];
@@ -2611,8 +2995,11 @@
 
     if (type === "x-report") {
       if (!text("reason") && !text("details")) {
-        return tell("Select a reason or enter an explanation.");
-      }
+        const error = form.querySelector("[data-report-error]");
+        error.textContent = "Select a reason or enter an explanation.";
+      error.hidden = false;
+      return;
+    }
       const found = findItem(form.dataset.reference);
       if (!found.item) return tell("This content is no longer available.");
 
