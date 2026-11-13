@@ -957,10 +957,7 @@ function listingPage() {
 }
 
 function simulatorPage() {
-  const access = db.posts.filter((post) =>
-    post.type === "official" && post.access === "requested"
-  );
-  const pending = db.posts.filter((post) =>
+  const pending = db.posts.filter(post =>
     post.type === "official" && post.review === "pending"
   );
 
@@ -968,45 +965,46 @@ function simulatorPage() {
     <div class="simulator-banner">
       <strong>Presenter-only demo screen</strong>
       <p>
-        These buttons simulate the platform’s decision.
-        Employers must not have these permissions in a real system.
+        Companies can edit their own listings directly.
+        Every new listing and update still requires platform approval.
+        These controls simulate that decision.
       </p>
     </div>
 
-    <h2>Edit-access requests</h2>
-    ${access.map((post) => `
-      <article class="card">
-        <h3>${esc(post.live.title)}</h3>
-        <p>${esc(getUser(post.owner)?.org)}</p>
-        <div class="row">
-          ${button("Approve edit access", "access-approve", post.id)}
-          ${button("Reject request", "access-reject", post.id, "danger")}
-        </div>
-      </article>
-    `).join("") || '<p class="empty">No edit-access requests.</p>'}
-
     <h2>Listing submissions</h2>
-    ${pending.map((post) => `
+
+    ${pending.map(post => `
       <article class="card">
-        <h3>${esc(post.draft.title)}</h3>
+        <h3>${esc(post.draft.job || "Untitled position")}</h3>
+
         ${post.live ? `
           <details>
             <summary>Currently published version</summary>
             ${listingPreview(post.live)}
           </details>
         ` : '<p class="muted">New listing—not published yet.</p>'}
+
         <h3>Submitted version</h3>
         ${listingPreview(post.draft)}
+
         <form data-form="review-decision" data-id="${esc(post.id)}">
-          ${area("Reason / reviewer feedback (used if rejected)", "reason",
-            "Please clarify the internship responsibilities.", false, 1000)}
+          ${area(
+            "Reason / reviewer feedback (used if rejected)",
+            "reason",
+            "Please clarify the internship responsibilities.",
+            false,
+            1000
+          )}
+
           <div class="row">
             <button name="decision" value="approve">Approve & publish</button>
-            <button name="decision" value="reject" class="danger">Reject update</button>
+            <button name="decision" value="reject" class="danger">
+              Reject update
+            </button>
           </div>
         </form>
       </article>
-    `).join("") || '<p class="empty">No submissions awaiting review.</p>'}`;
+    `).join("") || '<p class="empty">No submissions awaiting approval.</p>'}`;
 }
 
 function listingPreview(data) {
@@ -1290,21 +1288,6 @@ document.addEventListener("click", async (event) => {
   }
 
   // The simulator is a deliberate classroom-only permission bypass.
-  if (["access-approve", "access-reject"].includes(action)) {
-    if (route.name !== "simulator") return;
-    const post = getPost(id);
-    if (!post || post.access !== "requested") return;
-    const approved = action === "access-approve";
-    post.access = approved ? "approved" : "none";
-    post.reason = approved ? "" : "Edit-access request rejected. You can request access again.";
-    notify(post.owner,
-      approved ? "Edit access approved." : "Edit-access request rejected.",
-      { name: "workspace" });
-    persist();
-    render();
-    tell(approved ? "Edit access approved by the simulated platform." : "Edit-access request rejected.");
-    return;
-  }
 
   if (!me()?.verified) return go("account");
 
@@ -1559,6 +1542,11 @@ document.addEventListener("submit", async (event) => {
 
     if (decision === "approve") {
       post.live = clone(post.draft);
+      if (post.jobMeta) {
+        post.jobMeta.payMin = post.live.payMin ?? post.jobMeta.payMin;
+        post.jobMeta.payMax = post.live.payMax ?? post.jobMeta.payMax;
+        post.jobMeta.payUnit = "HKD/month";
+      }
       post.draft = null;
       post.review = "live";
       post.access = "none";
@@ -1775,7 +1763,10 @@ document.addEventListener("submit", async (event) => {
     const draft = {
       title: text("title"), company: me().org, job: text("job"),
       duration: Number(text("duration")), location: text("location"),
-      pay: text("pay"), deadline: text("deadline"),
+      payMin,
+      payMax,
+      pay: `HK$${payMin.toLocaleString("en-HK")}–${payMax.toLocaleString("en-HK")}/month`,
+      deadline: text("deadline"),
       body: text("body"), requirements: text("requirements")
     };
 
@@ -1803,8 +1794,8 @@ document.addEventListener("submit", async (event) => {
     dirty = false;
     await go("workspace", {}, true);
     tell(decision === "submit"
-      ? "Submitted for platform review. Use the simulator outside the phone."
-      : "Draft saved. It is not public until approved.");
+      ? "Submitted for platform approval. Your new listing or changes will become public only after approval."
+      : "Draft saved. Submit it for platform approval when ready.");
     return;
   }
 
