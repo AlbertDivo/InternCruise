@@ -5,6 +5,11 @@
      All credentials, documents, AI results and moderation are simulations. */
 
   const ICONS = {
+    briefcase: `<rect x="3" y="6" width="18" height="15" rx="2"/>
+      <path d="M8 6V3h8v3M3 11c5 3 13 3 18 0M10 13h4"/>`,
+    inquiry: `<circle cx="12" cy="12" r="9"/>
+      <path d="M9.5 8.5a2.7 2.7 0 0 1 5.2 1
+        c0 1.8-2.7 2-2.7 4M12 17h.01"/>`,
     ship: `<path d="M9.5 5V2.5h5V5M6 10V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3M2.5 12 12 9l9.5 3c-1.2 4.7-3.8 7-6.7 6.5L12 18l-2.8.5C6.3 19 3.7 16.7 2.5 12ZM12 9v9M1.5 21c2-1.5 3-1.5 5 0s3 1.5 5 0 3-1.5 5 0 3 1.5 5 0"/><path d="M9 7.5h.5m5 0h.5" stroke-width="1.8"/>`,
     heart: `<path d="M20 4c-3-2-6 0-8 2-2-2-5-4-8-2-5 4 0 10 8 16 8-6 13-12 8-16Z"/>`,
     eye: `<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/>
@@ -500,27 +505,101 @@
   // Real unregistered-company logos would need licensed image URLs.
 
   function currentNavigationTab() {
-    const isAuthorProfile = page => page.name === "profile" &&
-      page.actor && page.actor !== currentUserId;
-    // Author profiles belong to the section they were opened from, not Me.
+    const isAuthorProfile = page =>
+      page.name === "profile" &&
+      page.actor &&
+      page.actor !== currentUserId;
+  
     const page = isAuthorProfile(route)
-      ? [...navigation].reverse().find(entry => !isAuthorProfile(entry)) || { name: "posts" }
+      ? [...navigation].reverse().find(entry => !isAuthorProfile(entry)) ||
+        { name: "posts" }
       : route;
-    return page.name.startsWith("forum") || page.name === "hashtag"
-      ? "forum"
-      : ["internships", "comparisons", "internship", "review", "internship-proof"].includes(page.name)
-        ? "internships"
-        : ["posts", "create", "experience", "post"].includes(page.name)
-          ? "posts"
-          : ["profile", "edit-profile", "favorites", "profile-item", "resume", "career-profile", "full-profile", "workspace", "listing"].includes(page.name)
-            ? "profile" : "home";
+  
+    if (page.name.startsWith("forum") || page.name === "hashtag") {
+      return "forum";
+    }
+  
+    if (
+      provider() &&
+      ["internships", "workspace", "listing", "internship"].includes(page.name)
+    ) {
+      return "internships";
+    }
+  
+    if (
+      ["internships", "comparisons", "internship", "review", "internship-proof"]
+        .includes(page.name)
+    ) {
+      return "internships";
+    }
+  
+    if (["posts", "create", "experience", "post"].includes(page.name)) {
+      return "posts";
+    }
+  
+    if ([
+      "profile", "edit-profile", "favorites", "profile-item",
+      "resume", "career-profile", "full-profile", "premium",
+      "workspace", "listing"
+    ].includes(page.name)) {
+      return "profile";
+    }
+  
+    return provider() ? "internships" : "home";
+  }
+  
+  function updateAppNavigation() {
+    const tabs = provider()
+      ? [
+          ["posts", "Posts", "posts"],
+          ["forum", "Forum", "forum"],
+          ["internships", "Manage", "briefcase"],
+          ["profile", "Me", "me"]
+        ]
+      : [
+          ["posts", "Posts", "posts"],
+          ["forum", "Forum", "forum"],
+          ["home", "Home", "home"],
+          ["internships", "Internships", "jobs"],
+          ["profile", "Me", "me"]
+        ];
+  
+    $("appMenu").style.gridTemplateColumns =
+      `repeat(${tabs.length}, minmax(0, 1fr))`;
+  
+    $("appMenu").innerHTML = tabs.map(([id, label, image]) => `
+      <button type="button" data-action="tab" data-id="${id}">
+        ${icon(image)}${label}
+      </button>
+    `).join("");
   }
 
+  let lastUiAccount = null;
   const originalRender = render;
 
   render = function () {
     migrate();
+
+    if (lastUiAccount !== currentUserId) {
+      jobFilters = emptyJobFilters();
+      draftFilters = emptyJobFilters();
+      jobQuery = "";
+      jobMode = "search";
+      searchedJobs = false;
+      lastUiAccount = currentUserId;
+    }
+    
+    if (
+      provider() &&
+      ["home", "premium", "reward-ad", "trial-people", "comparisons"]
+        .includes(route.name)
+    ) {
+      route = { name: "internships" };
+      navigation = [];
+    }
+    
     originalRender();
+    updateAppNavigation();
     $("screen").dataset.page = route.name;
     document.querySelector(".phone").dataset.page = route.name;
 
@@ -544,18 +623,6 @@
 
   document.querySelector(".brand").innerHTML = `${icon("ship")} InternCruise`;
   document.querySelector(".app-header strong").innerHTML = `${icon("ship")} InternCruise`;
-
-  $("appMenu").innerHTML = [
-    ["posts", "Posts", "posts"],
-    ["forum", "Forum", "forum"],
-    ["home", "Home", "home"],
-    ["internships", "Internships", "jobs"],
-    ["profile", "Me", "me"]
-  ].map(([id, label, image]) => `
-    <button type="button" data-action="tab" data-id="${id}">
-      ${icon(image)}${label}
-    </button>
-  `).join("");
 
   function redrawPreservingInputs() {
     const screen = $("screen");
@@ -722,44 +789,68 @@
     </section>`;
   }
 
-  pages.home = () => `${heading("Your next starting point", "", false)}
-    <p>Explore opportunities, learn from other students and build your next step.</p>
+  pages.home = () => {
+    if (provider()) return companyManagementPage();
   
-    <div class="home-journey" aria-hidden="true">${journeyArt}</div>
+    return `${heading("Your next starting point", "", false)}
+      <p class="ic-home-intro">
+        Explore opportunities, learn from others and plan your next step.
+      </p>
   
-    <section class="card">
-      <h2>Internship information list</h2>
-      <p>Browse opportunities, compare roles and keep a wishlist.</p>
-      ${xb("Explore internships →", "navigate", "internships", "wide")}
-    </section>
+      <section class="ic-home-dashboard" aria-label="Explore InternCruise">
+        <div class="ic-home-poster" aria-hidden="true">${journeyArt}</div>
   
-    <section class="card">
-      <h2>Your community</h2>
-      <p>Find experiences in Posts, or ask a question in Forum.</p>
-      <div class="row">
-        ${xb("Explore posts", "navigate", "posts")}
-        ${xb("Visit Forum", "navigate", "forum")}
-      </div>
-    </section>
+        <div class="ic-home-tiles">
+          <section class="ic-home-tile">
+            <span class="ic-home-tile-icon">${icon("jobs")}</span>
+            <h2>Internship information list</h2>
+            <p>Find roles, compare opportunities and build your wishlist.</p>
+            ${xb("Explore →", "navigate", "internships", "secondary")}
+          </section>
   
-    <section class="card ic-reward-section">
-      <h2>Advertisements for rewards</h2>
-      <p>Watch advertisements here to earn access to our VIP functions.</p>
+          <section class="ic-home-tile">
+            <span class="ic-home-tile-icon">${icon("forum")}</span>
+            <h2>The Community</h2>
+            <p>Learn from shared experiences and ask your questions.</p>
+            <div class="ic-home-tile-links">
+              ${xb("Posts", "navigate", "posts", "secondary")}
+              ${xb("Forum", "navigate", "forum", "secondary")}
+            </div>
+          </section>
   
-      ${xb("Watch ads", "watch-ad", "", "wide")}
+          <section class="ic-home-tile">
+            <span class="ic-home-tile-icon">${icon("star")}</span>
+            <h2>InternCruise Premium</h2>
+            <p>${isPremium()
+              ? "Explore your Premium features and membership."
+              : "Discover demonstration plans and future Premium features."}</p>
+            ${xb("Premium Center →", "navigate", "premium", "secondary")}
+          </section>
   
-      ${messagingTrialBalance() ? `
-        <p class="muted">
-          ${messagingTrialBalance()} free private messaging
-          ${messagingTrialBalance() === 1 ? "trial" : "trials"} available.
-        </p>
-        ${xb("Use a messaging trial", "navigate", "trial-people", "link-button")}
-      ` : ""}
+          <section class="ic-home-tile">
+            <span class="ic-home-tile-icon">${icon("heart")}</span>
+            <h2>Advertisements for rewards</h2>
+            <p>Watch advertisements here to earn access to our VIP functions.</p>
+            ${xb("Watch ads", "watch-ad", "", "secondary")}
   
-      <p class="ic-subtle">Demo rewards only · No real advertisements or purchases.</p>
-    </section>
+            ${messagingTrialBalance() ? `
+              ${xb(
+                `${messagingTrialBalance()} messaging trials →`,
+                "navigate",
+                "trial-people",
+                "link-button ic-home-trials"
+              )}
+            ` : ""}
+          </section>
+        </div>
+      </section>
   
-    ${homeExplorePosts()}`;
+      <p class="ic-subtle ic-home-demo-note">
+        Classroom demonstration · Fictional opportunities, plans and rewards
+      </p>
+  
+      ${homeExplorePosts()}`;
+  };
 
   // Preserve the previous feed, but move it to Posts.
   let postsMode = "recommended";
