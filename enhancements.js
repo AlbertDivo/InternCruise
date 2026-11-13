@@ -1564,19 +1564,12 @@
           <button name="method" value="certificate">Submit internship certificate</button>
           <button name="method" value="other">Submit other documents</button>
         </div>
-        <p class="muted">Our staff will verify the validity of your documents.</p>
         <p class="muted">
-          The App will automatically confirm your position, employer, time,
-          and AI generate a description for you. You can always edit them at “Me” after verification.
-        </p>
-        <p class="muted">
+          Our staff will verify the validity of your documents.<br>
           After verification, you will be able to share your experiences in this
-          internship under its description page. You can also submit your proof
-          there; it will be automatically updated in “Me”.
+          internship by posting a review. The App will add this internship to your
+          profile. You can always edit at “Me”.
         </p>
-        <p class="muted">
-          After verification, the App will automatically add this internship to your profile.
-          You can always edit them at “Me”.
         </p>
         <p class="warning">
           Verification and extraction are simulated. No documents are uploaded.
