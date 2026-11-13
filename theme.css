@@ -229,3 +229,466 @@ form[data-form="x-job-search"] button{height:39px;padding:8px;font-size:.7rem;ba
 .me-empty button{font-size:.75rem}
 .me-section-label{font-size:.78rem;color:#5f746a;margin:7px 0 12px;letter-spacing:0}
 .me-comment-focus{background:#e1f1e7;border-radius:5px;outline:2px solid #a8cdbc;outline-offset:4px}
+/* ===== Unified content interactions ===== */
+
+.ic-engagement {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  width: 100%;
+  margin: 12px 0 0;
+}
+
+.ic-engagement .ic-engagement-stat {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fffefd;
+  color: #576a62;
+  font-size: .68rem;
+  font-weight: 550;
+  line-height: 1;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.ic-engagement .ic-icon {
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.7;
+}
+
+.ic-engagement .ic-view-count {
+  cursor: default;
+}
+
+.ic-engagement .ic-like[aria-pressed="true"],
+.ic-engagement .ic-favorite[aria-pressed="true"] {
+  color: var(--ink);
+  border-color: #bddbc9;
+  background: #edf7f0;
+}
+
+.ic-engagement .ic-like[aria-pressed="true"] .ic-icon,
+.ic-engagement .ic-favorite[aria-pressed="true"] .ic-icon {
+  fill: #cbeada;
+}
+
+.ic-engagement .ic-report {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-left: auto;
+  min-height: 32px;
+  padding: 4px 0 4px 3px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #6d7770;
+  box-shadow: none;
+  font-size: .67rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.ic-engagement .ic-report span {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.ic-engagement .ic-report:hover {
+  color: var(--ink);
+  background: transparent;
+  box-shadow: none;
+  text-decoration: none;
+}
+
+.ic-social-post > .ic-engagement {
+  border-top: 1px solid #eeeeea;
+  padding-top: 9px;
+}
+
+@media (max-width: 380px) {
+  .ic-engagement { gap: 4px; }
+
+  .ic-engagement .ic-engagement-stat {
+    padding: 5px;
+    gap: 3px;
+    font-size: .65rem;
+  }
+
+  .ic-engagement .ic-icon {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* ===== Phone-contained report and reward overlays ===== */
+
+.ic-phone-overlay {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  max-width: none;
+  max-height: none;
+  padding: 18px;
+  border: 0;
+  border-radius: 21px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #142f2a66;
+}
+
+.ic-phone-overlay[open] {
+  display: grid;
+  align-items: center;
+  justify-items: center;
+}
+
+.ic-phone-overlay::backdrop {
+  background: transparent;
+}
+
+.ic-phone-modal-card {
+  width: 100%;
+  min-width: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 18px;
+  border: 1px solid #e0e5df;
+  border-radius: 17px;
+  background: var(--paper);
+  box-shadow: 0 12px 36px #163c2b26;
+}
+
+.ic-phone-modal-card .ic-modal-heading {
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.ic-modal-heading h2 {
+  margin: 3px 0;
+  font-size: 1.18rem;
+}
+
+.ic-modal-heading > button {
+  flex: none;
+  padding: 3px 9px;
+  font-size: 1.1rem;
+}
+
+.ic-phone-modal-card textarea {
+  min-height: 85px;
+}
+
+.ic-phone-modal-card .muted {
+  font-size: .74rem;
+}
+
+/* ===== Filters: enter from the phone's left edge ===== */
+
+@keyframes ic-filter-enter-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+.ic-filter-panel {
+  animation: ic-filter-enter-left .25s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ic-filter-panel {
+    animation: none;
+  }
+}
+
+/* ===== Home: rewards and official demonstration posts ===== */
+
+.ic-reward-section {
+  background: #edf7f0;
+  border-color: #d2e7da;
+}
+
+.ic-reward-section > .wide {
+  margin: 5px 0 8px;
+}
+
+.ic-reward-section > .link-button {
+  font-size: .77rem;
+  color: var(--ink);
+}
+
+.ic-reward-section > .ic-subtle {
+  margin-top: 12px;
+  font-size: .67rem;
+}
+
+.ic-home-explore {
+  margin: 26px 0 6px;
+}
+
+.ic-home-explore > h2 {
+  font-size: 1.2rem;
+  color: #123d39;
+  margin-bottom: 9px;
+}
+
+.ic-explore-disclaimer {
+  padding: 10px 12px;
+  border: 1px solid #eadfbd;
+  border-radius: 10px;
+  background: #faf5e7;
+  color: #76633a;
+  font-size: .72rem;
+  line-height: 1.5;
+}
+
+.ic-editorial-author {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--ink);
+  font-size: .8rem;
+}
+
+.ic-editorial-author > .ic-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.ic-editorial-author > .badge {
+  margin-left: auto;
+  font-size: .58rem;
+}
+
+.ic-editorial-post .ic-editorial-category {
+  margin: 12px 0 5px;
+  color: var(--muted);
+  font-size: .66rem;
+}
+
+.ic-editorial-post h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.ic-editorial-post > p:last-child {
+  font-size: .8rem;
+  line-height: 1.5;
+  color: #4f6158;
+}
+
+/* ===== Full-phone reward advertisement ===== */
+
+.phone[data-page="reward-ad"] .app-header,
+.phone[data-page="reward-ad"] .app-menu,
+.phone[data-page="reward-ad"] .statusbar,
+.phone[data-page="reward-ad"] .homebar,
+.phone[data-page="reward-ad"] .notice {
+  display: none !important;
+}
+
+#screen[data-page="reward-ad"] {
+  display: flex;
+  padding: 0;
+  overflow: hidden;
+}
+
+.ic-reward-ad {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  background: #cbe9dc;
+}
+
+.ic-ad-media {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.ic-ad-media canvas,
+.ic-ad-media video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ic-ad-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 16px;
+}
+
+.ic-ad-badge {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #fcfffacc;
+  color: #426454;
+  font-size: .62rem;
+}
+
+.ic-ad-close {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #b9d6c8;
+  border-radius: 50%;
+  background: #fcfffae6;
+  color: #245547;
+  font-size: 1.25rem;
+}
+
+.ic-ad-copy {
+  padding: 18px 26px;
+  color: #064d3e;
+}
+
+.ic-ad-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: .95rem;
+  font-weight: 700;
+}
+
+.ic-ad-brand .ic-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.ic-ad-copy h1 {
+  margin: 16px 0 12px;
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  line-height: 1.06;
+  letter-spacing: -.055em;
+}
+
+.ic-ad-copy p {
+  font-size: .95rem;
+  color: #426757;
+}
+
+.ic-ad-bottom {
+  margin-top: auto;
+  padding: 17px 22px 20px;
+  background: linear-gradient(transparent, #fcfffaf5 20%);
+}
+
+#rewardAdStatus {
+  margin: 8px 0;
+  font-size: .8rem;
+  font-weight: 650;
+  color: #164f3f;
+}
+
+#rewardAdProgress {
+  display: block;
+  width: 100%;
+  height: 7px;
+  margin: 10px 0 14px;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  appearance: none;
+  background: #dbeade;
+  accent-color: var(--ink);
+}
+
+#rewardAdProgress::-webkit-progress-bar {
+  background: #dbeade;
+  border-radius: 999px;
+}
+
+#rewardAdProgress::-webkit-progress-value {
+  background: var(--ink);
+  border-radius: 999px;
+}
+
+#rewardAdProgress::-moz-progress-bar {
+  background: var(--ink);
+  border-radius: 999px;
+}
+
+.ic-ad-disclaimer {
+  margin: 10px 0 5px;
+  font-size: .69rem;
+  line-height: 1.45;
+  color: #526a5a;
+  text-align: center;
+}
+
+.ic-ad-demo-note {
+  margin: 8px 0 0;
+  font-size: .61rem;
+  color: #6e7f72;
+  text-align: center;
+}
+
+.ic-reward-success {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  margin: 4px auto 16px;
+  border-radius: 50%;
+  background: #e1f4e8;
+  color: var(--ink);
+}
+
+.ic-reward-success .ic-icon {
+  width: 35px;
+  height: 35px;
+}
+
+.ic-reward-message {
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.5;
+  text-align: center;
+  color: #164f3f;
+}
+
+.ic-inbox-reward {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #eaf5ed;
+  color: #35634f;
+  font-size: .74rem;
+}
+
+.ic-inbox-reward button {
+  font-size: .74rem;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
