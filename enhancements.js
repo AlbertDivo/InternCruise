@@ -1023,13 +1023,19 @@
           "Privacy concern",
           "Other"
         ])}
+
         ${area("Additional explanation", "details", "", false, 1200)}
+
         <p class="muted">
-          Classroom simulation: reports are stored locally.
+          Classroom simulation: reports stay in this browser.
           No real moderation team receives them.
         </p>
+
+        <p class="warning" data-report-error role="alert" hidden></p>
+
         <button class="wide">Submit report</button>
-      </form>`);
+      </form>
+    `, "ic-phone-overlay");
   }
   function fullName(user) {
     return `${user.firstName || ""} ${user.lastName || ""}`.trim() +
