@@ -1112,10 +1112,20 @@
     ));
 
     return `${heading("Forum", "Ask, share and learn together.", false)}
-      <form data-form="x-forum-search">
-        ${field("Search discussions or #hashtags", "query", forumQuery, "text", false)}
-        <button>Search</button>
-        ${xb("Clear", "forum-clear")}
+      <form data-form="x-forum-search" class="ic-social-search" role="search">
+        ${field(
+          "Search discussions or hashtags",
+          "query",
+          forumQuery,
+          "search",
+          false,
+          'placeholder="Discussions or #hashtags"'
+        )}
+      
+        <div class="row">
+          <button type="submit">Search</button>
+          ${xb("Clear", "forum-clear")}
+        </div>
       </form>
       <p>${xb("＋ New forum post", "forum-compose", "", "wide")}</p>
       ${forumResults(matched)}`;
@@ -1405,62 +1415,316 @@
       <small class="muted">${esc(dateLabel(item.created))}</small>
       <div class="row me-entry-actions">
         ${xb(comment ? "View comment →" : "Open →", "me-open", key, "link-button")}
-        ${tab === "saved" ? xb("Unsave", "favorite", key, "link-button") : ""}
+        ${tab === "saved" ? xb("Remove favorite", "favorite", key, "link-button") : ""}
         ${tab === "liked" ? xb("Unlike", "like", key, "link-button") : ""}
       </div>
     </article>`;
   }
 
-  function renderStudentMe(user) {
+  const PREMIUM_PLANS = [
+    {
+      id: "monthly",
+      name: "Monthly",
+      price: "HK$48 / month",
+      description: "A flexible sample monthly subscription."
+    },
+    {
+      id: "annual",
+      name: "Annual",
+      price: "HK$480 / year",
+      description: "A sample annual subscription."
+    }
+  ];
+  
+  const PREMIUM_FEATURES = [
+    {
+      id: "resume",
+      title: "AI résumé feedback",
+      description: "A future tool for reviewing résumé structure and clarity."
+    },
+    {
+      id: "interview",
+      title: "Interview practice",
+      description: "A future guided practice space for internship interviews."
+    },
+    {
+      id: "career",
+      title: "Personalised career guidance",
+      description: "A future feature for exploring possible career directions."
+    },
+    {
+      id: "messaging",
+      title: "Premium private messaging",
+      description: "A future Premium messaging allowance."
+    }
+  ];
+  
+  function isPremium(user = me()) {
+    return Boolean(
+      user?.kind === "participant" &&
+      db.premium?.[user.id]?.active
+    );
+  }
+  
+  function premiumBadge(user = me()) {
+    if (!user || user.kind !== "participant") return "";
+  
+    return xb(
+      isPremium(user) ? "InternCruise Premium" : "Free account",
+      "navigate",
+      "premium",
+      `badge ic-account-status ${isPremium(user) ? "ic-premium-badge" : "ic-free-badge"}`,
+      'aria-label="Open Premium Center"'
+    );
+  }
+  
+  pages.premium = () => {
+    if (!me() || provider()) return deniedPage();
+  
+    const membership = db.premium?.[currentUserId];
+    const plan = PREMIUM_PLANS.find(item => item.id === membership?.plan);
+  
+    return `${heading("Premium Center")}
+      <div class="ic-premium-intro">
+        ${icon("star")}
+        <h2>${isPremium() ? "Your InternCruise Premium" : "Discover InternCruise Premium"}</h2>
+        <p>
+          ${isPremium()
+            ? "Explore your demonstration membership and future features."
+            : "Choose a demonstration plan to preview the Premium experience."}
+        </p>
+      </div>
+  
+      <p class="ic-explore-disclaimer">
+        Prototype only. Prices and plans are fictional.
+        No payment is collected, no billing occurs, and Premium tools
+        are not implemented yet.
+      </p>
+  
+      ${isPremium() ? `
+        <section class="card">
+          <span class="badge ic-premium-badge">InternCruise Premium</span>
+          <h2>${esc(plan?.name || "Demo")} membership</h2>
+          <p>${esc(plan?.price || "Demonstration plan")}</p>
+          <p class="muted">Demo status remains active until you switch back to Free.</p>
+          ${xb("Switch to Free account", "premium-free", "", "secondary")}
+        </section>
+  
+        <h2>Premium Features</h2>
+        <div class="stack">
+          ${PREMIUM_FEATURES.map(feature => `
+            <section class="card ic-premium-feature">
+              <h3>${esc(feature.title)}</h3>
+              <p>${esc(feature.description)}</p>
+              <span class="badge">Coming soon</span>
+              ${xb("Open feature preview", "premium-feature", feature.id, "secondary wide")}
+            </section>
+          `).join("")}
+        </div>
+      ` : `
+        <h2>Subscription plans</h2>
+  
+        ${PREMIUM_PLANS.map(item => `
+          <section class="card ic-premium-plan">
+            <h3>${esc(item.name)}</h3>
+            <p class="ic-premium-price">${esc(item.price)}</p>
+            <p class="muted">${esc(item.description)}</p>
+            <ul>
+              ${PREMIUM_FEATURES.map(feature =>
+                `<li>${esc(feature.title)} · planned</li>`
+              ).join("")}
+            </ul>
+            ${xb(
+              `Try ${item.name.toLowerCase()} plan`,
+              "premium-plan",
+              item.id,
+              "wide"
+            )}
+          </section>
+        `).join("")}
+      `}`;
+  };
+  function renderMyActivity() {
     const view = meView();
     const category = view.categories[view.tab] || "posts";
     const entries = meEntries(view.tab, category);
+  
+    const wished = provider() ? [] : allJobs().filter(post =>
+      (db.wishlists[currentUserId] || []).includes(post.id)
+    ).reverse();
+  
+    const showWishlist = !provider() &&
+      view.tab === "saved" &&
+      category === "internships";
+  
+    const browse = category === "forum"
+      ? "forum"
+      : category === "internships" ? "internships" : "posts";
+  
+    const emptyLabel = {
+      published: "published content",
+      comments: "comments",
+      saved: "favorites",
+      liked: "liked content"
+    }[view.tab];
+  
+    return `<section class="me-content">
+      <div class="me-tabs-sticky">
+        <nav class="me-tabs" aria-label="My content">
+          ${[
+            ["published", "Published"],
+            ["comments", "Comments"],
+            ["saved", "Favorites"],
+            ["liked", "Liked"]
+          ].map(([key, label]) => xb(
+            label,
+            "me-tab",
+            key,
+            "",
+            `aria-pressed="${view.tab === key}" aria-controls="meContent"`
+          )).join("")}
+        </nav>
+  
+        <nav class="me-subtabs" aria-label="Content type">
+          ${meCategories[view.tab].map(key => xb(
+            key === "posts" ? "Posts" : key === "forum" ? "Forum" : "Internships",
+            "me-category",
+            key,
+            "secondary",
+            `aria-pressed="${category === key}" aria-controls="meContent"`
+          )).join("")}
+        </nav>
+      </div>
+  
+      <div id="meContent"
+        aria-label="${esc(view.tab === "saved" ? "favorites" : view.tab)} ${esc(category)}">
+  
+        ${showWishlist ? `
+          <h2 class="me-section-label">
+            Wishlisted internships (${wished.length})
+          </h2>
+          ${wished.map(jobRow).join("")}
+          ${entries.length
+            ? '<h2 class="me-section-label">Favorite internship comments</h2>'
+            : ""}
+        ` : ""}
+  
+        ${entries.map(entry => meEntryCard(entry, view.tab)).join("")}
+  
+        ${!entries.length && !(showWishlist && wished.length) ? `
+          <div class="me-empty">
+            <p>No ${esc(emptyLabel)} here yet.</p>
+            ${xb(
+              `Explore ${category === "posts" ? "posts" : category === "forum" ? "Forum" : "internships"}`,
+              "navigate",
+              browse,
+              "secondary"
+            )}
+          </div>
+        ` : ""}
+      </div>
+    </section>`;
+  }
+  function renderStudentMe(user) {
     const all = profileEntries();
     const owned = all.filter(entry => entry.item.owner === currentUserId);
     const likes = owned.reduce((sum, entry) => sum + likesOf(entry.item), 0);
-    const wished = allJobs().filter(post => (db.wishlists[currentUserId] || []).includes(post.id)).reverse();
-    const savedCount = all.filter(entry => isFavorite(entry.kind, entry.item.id)).length + wished.length;
-    const browse = category === "forum" ? "forum" : category === "internships" ? "internships" : "posts";
+  
+    const wished = allJobs().filter(post =>
+      (db.wishlists[currentUserId] || []).includes(post.id)
+    );
+  
+    const savedCount = all.filter(entry =>
+      isFavorite(entry.kind, entry.item.id)
+    ).length + wished.length;
+  
     return `<section class="me-overview">
-      <div class="row between"><span class="eyebrow">My profile</span>
-        <details class="me-settings"><summary aria-label="Account settings">${icon("me")} Settings</summary>
+      <div class="row between">
+        <span class="eyebrow">My profile</span>
+  
+        <details class="me-settings">
+          <summary aria-label="Account settings">${icon("me")} Settings</summary>
           <div>${button("Log out", "logout", "", "secondary wide")}</div>
-        </details></div>
-      <div class="profile-top">${avatar(user)}<div><h1>${esc(fullName(user))}</h1>
-        <span class="badge">${esc(user.identity)} · Demo verified</span></div></div>
-      <p class="me-school">${esc(user.org)} · ${esc(user.major || "Major not added")}</p>
-      <p class="muted">${icon("pin")}${esc(user.location || "Location not added")}</p>
-      <p class="me-bio">${esc(user.headline || user.bio || "Add a short introduction to your profile.")}</p>
-      <div class="me-skills">${(user.skills || []).slice(0, 3).map(skill => `<span>${esc(skill)}</span>`).join("")}</div>
-      <div class="me-stats"><div><strong>${owned.filter(entry => !entry.comment).length}</strong><span>Published</span></div>
-        <div><strong>${likes}</strong><span>Likes received</span></div><div><strong>${savedCount}</strong><span>Saved items</span></div></div>
+        </details>
+      </div>
+  
+      <div class="profile-top">
+        ${avatar(user)}
+        <div class="grow">
+          <h1>${esc(fullName(user))}</h1>
+          <div class="ic-profile-badges">
+            <span class="badge">${esc(user.identity)} · Demo verified</span>
+            ${premiumBadge(user)}
+          </div>
+        </div>
+      </div>
+  
+      <p class="me-school">
+        ${esc(user.org)} · ${esc(user.major || "Major not added")}
+      </p>
+  
+      <p class="muted">
+        ${icon("pin")}${esc(user.location || "Location not added")}
+      </p>
+  
+      <p class="me-bio">
+        ${esc(user.headline || user.bio || "Add a short introduction to your profile.")}
+      </p>
+  
+      <div class="me-skills">
+        ${(user.skills || []).slice(0, 3)
+          .map(skill => `<span>${esc(skill)}</span>`).join("")}
+      </div>
+  
+      <div class="me-stats">
+        <div>
+          <strong>${owned.filter(entry => !entry.comment).length}</strong>
+          <span>Published</span>
+        </div>
+        <div>
+          <strong>${likes}</strong>
+          <span>Likes received</span>
+        </div>
+        <div>
+          <strong>${savedCount}</strong>
+          <span>Saved items</span>
+        </div>
+      </div>
+  
       ${button("Edit profile", "edit-profile", "", "secondary wide")}
     </section>
+  
     <section class="card me-career-links" aria-label="Career and profile information">
-      ${xb(`<span><strong>My résumé</strong><small>${user.resumeDemo ? "Sample résumé added · Update" : "Not added · Add a sample résumé"}</small></span><b>›</b>`, "navigate", "resume", "me-career-link")}
-      ${xb(`<span><strong>Career profile</strong><small>${(user.experiences || []).length} ${(user.experiences || []).length === 1 ? "experience" : "experiences"} · Skills & interests</small></span><b>›</b>`, "navigate", "career-profile", "me-career-link")}
-      ${xb('<span><strong>View full profile</strong><small>Education, graduation & about</small></span><b>›</b>', "navigate", "full-profile", "me-career-link")}
+      ${xb(
+        `<span><strong>My résumé</strong><small>${
+          user.resumeDemo
+            ? "Sample résumé added · Update"
+            : "Not added · Add a sample résumé"
+        }</small></span><b>›</b>`,
+        "navigate", "resume", "me-career-link"
+      )}
+  
+      ${xb(
+        `<span><strong>Career profile</strong><small>${
+          (user.experiences || []).length
+        } experiences · Skills & interests</small></span><b>›</b>`,
+        "navigate", "career-profile", "me-career-link"
+      )}
+  
+      ${xb(
+        '<span><strong>View full profile</strong><small>Education, graduation & about</small></span><b>›</b>',
+        "navigate", "full-profile", "me-career-link"
+      )}
+  
+      ${xb(
+        `<span><strong>Premium Features</strong><small>${
+          isPremium(user) ? "Explore your Premium membership" : "View demonstration plans"
+        }</small></span><b>›</b>`,
+        "navigate", "premium", "me-career-link"
+      )}
     </section>
-    <section class="me-content">
-      <div class="me-tabs-sticky">
-        <nav class="me-tabs" aria-label="My content">
-          ${[["published", "Published"], ["comments", "Comments"], ["saved", "Saved"], ["liked", "Liked"]].map(([key, label]) =>
-            xb(label, "me-tab", key, "", `aria-pressed="${view.tab === key}" aria-controls="meContent"`)).join("")}
-        </nav>
-        <nav class="me-subtabs" aria-label="Content type">
-          ${meCategories[view.tab].map(key => xb(key === "posts" ? "Posts" : key === "forum" ? "Forum" : "Internships",
-            "me-category", key, "secondary", `aria-pressed="${category === key}" aria-controls="meContent"`)).join("")}
-        </nav>
-      </div>
-      <div id="meContent" aria-label="${esc(view.tab)} ${esc(category)}">
-        ${view.tab === "saved" && category === "internships" ? `<h2 class="me-section-label">Wishlisted internships (${wished.length})</h2>
-          ${wished.map(jobRow).join("")}${entries.length ? '<h2 class="me-section-label">Saved internship comments</h2>' : ""}` : ""}
-        ${entries.map(entry => meEntryCard(entry, view.tab)).join("")}
-        ${!entries.length && !(view.tab === "saved" && category === "internships" && wished.length)
-          ? `<div class="me-empty"><p>No ${view.tab === "published" ? "published content" : view.tab === "comments" ? "comments" : view.tab === "saved" ? "saved items" : "liked content"} here yet.</p>
-            ${xb(`Explore ${category === "posts" ? "posts" : category === "forum" ? "Forum" : "internships"}`, "navigate", browse, "secondary")}</div>` : ""}
-      </div>
-    </section>`;
+  
+    ${renderMyActivity()}`;
   }
 
   pages["career-profile"] = () => provider() ? missingPage() : `${heading("Career profile", "Your experience, skills and interests.")}
@@ -1493,50 +1757,86 @@
       user.kind === "provider" ? user.org : fullName(user);
 
     if (user.kind === "provider" && !anonymous) {
-      const listings = db.posts.filter(post => post.type === "official" && post.owner === user.id);
-      const published = listings.filter(post => post.live);
-      const inquiries = own ? db.chats.filter(chat =>
-        chat.context.startsWith("listing:") &&
-        chat.participants.some(person => actorOwner(person) === user.id)) : [];
-      return `${own ? "" : button("← Back", "back", "", "link-button")}
+      const listings = db.posts.filter(post =>
+        post.type === "official" && post.owner === user.id
+      );
+    
+      const openCount = listings.filter(post =>
+        post.live && !post.closed && post.review !== "pending"
+      ).length;
+    
+      const closedCount = listings.filter(post =>
+        post.live && post.closed && post.review !== "pending"
+      ).length;
+    
+      const pendingCount = listings.filter(post =>
+        post.review === "pending"
+      ).length;
+    
+      return `${own ? `
+        <div class="row between ic-company-settings-row">
+          <span class="eyebrow">Company profile</span>
+          <details class="me-settings">
+            <summary aria-label="Company account settings">
+              ${icon("me")} Settings
+            </summary>
+            <div>${button("Log out", "logout", "", "secondary wide")}</div>
+          </details>
+        </div>
+      ` : button("← Back", "back", "", "link-button")}
+    
         <section class="card company-overview">
-          <div class="profile-top">${avatar(user)}<div>
-            <h1>${esc(user.org)}</h1><span class="badge">Company employee · Demo verified</span>
-          </div></div>
-          <p><strong>${esc(user.headline || "")}</strong></p>
+          <div class="profile-top">
+            ${avatar(user)}
+            <div>
+              <h1>${esc(user.org)}</h1>
+              <span class="badge">Company · Demo verified</span>
+            </div>
+          </div>
+    
           <h2>About the company</h2>
           <p class="preserve">${esc(user.bio || "No company introduction yet.")}</p>
-          <h2 class="sr-only">Company contact</h2>
+    
           <div class="company-contact">
-            <div>${icon("me")}<span><strong>${esc(fullName(user))}</strong><small>${esc(user.major || "Contact person")}</small></span></div>
-            <div>${icon("pin")}<span>${esc(user.location || "Not added")}</span></div>
+            <div>
+              ${icon("me")}
+              <span>
+                <strong>${esc(fullName(user))}</strong>
+                <small>${esc(user.major || "Responsible contact")}</small>
+              </span>
+            </div>
+            <div>
+              ${icon("pin")}
+              <span>${esc(user.location || "Not added")}</span>
+            </div>
           </div>
-          ${own ? button("Edit company profile", "edit-profile", "", "wide")
+    
+          ${own
+            ? button("Edit company profile", "edit-profile", "", "wide")
             : button("Message company", "message-actor", person, "wide")}
         </section>
-        ${own ? `<section class="card stack company-management">
-          <h2>Internship management</h2>
-          <div class="company-stat-grid">
-            <div><strong>${published.filter(post => !post.closed).length}</strong>Open</div>
-            <div><strong>${published.filter(post => post.closed).length}</strong>Closed</div>
-            <div><strong>${listings.filter(post => post.review === "pending").length}</strong>Pending</div>
+    
+        ${own ? `
+          <section class="card stack company-management">
+            <h2>Internship management</h2>
+            <div class="company-stat-grid">
+              <div><strong>${openCount}</strong>Open</div>
+              <div><strong>${closedCount}</strong>Closed</div>
+              <div><strong>${pendingCount}</strong>Pending</div>
+            </div>
+            ${xb("Manage listings →", "navigate", "internships", "wide")}
+          </section>
+    
+          <div class="company-links">
+            ${xb(
+              `${icon("inquiry")} Inquiries <span>›</span>`,
+              "navigate", "inbox", "secondary wide"
+            )}
           </div>
-          ${button("Manage listings →", "workspace", "", "wide")}
-        </section>
-        <div class="company-links">${xb(`${icon("chat")} Messages & inquiries <span>›</span>`, "navigate", "inbox", "secondary wide")}
-          ${xb("Favorites", "navigate", "favorites", "secondary wide")}
-          ${button("Log out", "logout", "", "secondary wide")}</div>
-        <details class="card company-inquiries">
-          <summary>Internship inquiries (${inquiries.length})</summary>
-          ${inquiries.map(chatRow).join("") || '<p class="muted">No internship inquiries yet. Questions sent from a listing will appear here.</p>'}
-        </details>` : ""}
-        <h2>Published internships (${published.length})</h2>
-        <div class="company-listings">${published.map(post => xb(
-          `<strong>${esc(post.live.job)}</strong><span>${esc(post.live.location)} · ${post.live.duration} weeks</span><b>${post.closed ? "Closed" : "Published"}</b>`,
-          "job-open", post.id, "company-listing"
-        )).join("") || '<p class="muted">No published internships yet.</p>'}</div>`;
+    
+          ${renderMyActivity()}
+        ` : ""}`;
     }
-
     if (own && user.kind === "participant") return renderStudentMe(user);
 
     return `${own ? "" : button("← Back", "back", "", "link-button")}
@@ -2723,6 +3023,77 @@
     const id = buttonElement.dataset.action === "like-forum"
       ? `forum||${buttonElement.dataset.id}` : buttonElement.dataset.id || "";
 
+    if (name === "premium-plan") {
+      if (provider() || !me()?.verified) return;
+    
+      const plan = PREMIUM_PLANS.find(item => item.id === id);
+      if (!plan) return;
+    
+      showModal("Try Premium", `
+        <p>
+          Activate the fictional ${esc(plan.name.toLowerCase())} plan
+          (${esc(plan.price)})?
+        </p>
+        <p class="muted">
+          No payment details are requested and no money is charged.
+          Premium features are previews only.
+        </p>
+        <div class="stack">
+          ${xb("Activate demo Premium", "premium-activate", plan.id, "wide")}
+          ${xb("Not now", "close-modal", "", "secondary wide")}
+        </div>
+      `, "ic-phone-overlay");
+      return;
+    }
+    
+    if (name === "premium-activate") {
+      if (provider() || !me()?.verified) return;
+    
+      const plan = PREMIUM_PLANS.find(item => item.id === id);
+      if (!plan) return;
+    
+      db.premium ??= {};
+      db.premium[currentUserId] = {
+        active: true,
+        plan: plan.id,
+        activated: timestamp()
+      };
+    
+      persist();
+      closeModal();
+      await go("premium", {}, true);
+      tell("Demo Premium activated. No payment was collected.");
+      return;
+    }
+    
+    if (name === "premium-free") {
+      if (provider() || !me()?.verified) return;
+    
+      db.premium ??= {};
+      db.premium[currentUserId] = { active: false };
+    
+      persist();
+      render();
+      tell("Switched to a Free demo account.");
+      return;
+    }
+    
+    if (name === "premium-feature") {
+      if (!isPremium()) return go("premium");
+    
+      const feature = PREMIUM_FEATURES.find(item => item.id === id);
+      if (!feature) return;
+    
+      showModal(feature.title, `
+        <p>${esc(feature.description)}</p>
+        <p class="muted">
+          This is a preview only. This Premium function has not been added
+          to the prototype yet.
+        </p>
+        ${xb("Got it", "close-modal", "", "wide")}
+      `, "ic-phone-overlay");
+      return;
+    }
     if (name === "watch-ad") {
       if (!me()?.verified || !await mayLeave()) return;
     
