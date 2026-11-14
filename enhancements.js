@@ -648,6 +648,7 @@
   const modal = document.createElement("dialog");
   modal.id = "expandedDialog";
   document.body.append(modal);
+  let filterCloseAnimation = null;
 
   function positionPhoneFilters() {
     const phoneScoped = modal.classList.contains("ic-filter-dialog") ||
@@ -668,6 +669,7 @@
 
   const filterResize = new ResizeObserver(positionPhoneFilters);
   modal.addEventListener("close", () => {
+    if (modal.open) return;
     filterResize.disconnect();
     window.removeEventListener("scroll", positionPhoneFilters, true);
     window.removeEventListener("resize", positionPhoneFilters);
@@ -675,6 +677,11 @@
   });
 
   function showModal(title, content, className = "") {
+    if (filterCloseAnimation) {
+      const animation = filterCloseAnimation;
+      filterCloseAnimation = null;
+      animation.cancel();
+    }
     // Remove positioning left over from a previous phone-scoped dialog.
     filterResize.disconnect();
     window.removeEventListener("scroll", positionPhoneFilters, true);
@@ -717,8 +724,52 @@
   }
 
   function closeModal() {
-    if (modal.open) modal.close();
+    if (!modal.open) return Promise.resolve();
+  
+    const panel = modal.querySelector(".ic-filter-panel");
+    const reducedMotion =
+      matchMedia("(prefers-reduced-motion: reduce)").matches;
+  
+    if (
+      !modal.classList.contains("ic-filter-dialog") ||
+      !panel ||
+      reducedMotion
+    ) {
+      modal.close();
+      return Promise.resolve();
+    }
+  
+    if (filterCloseAnimation) {
+      return filterCloseAnimation.finished.catch(() => {});
+    }
+  
+    const animation = panel.animate(
+      [
+        { transform: "translateX(0)", opacity: 1 },
+        { transform: "translateX(-100%)", opacity: .92 }
+      ],
+      {
+        duration: 340,
+        easing: "cubic-bezier(.4, 0, .2, 1)",
+        fill: "forwards"
+      }
+    );
+  
+    filterCloseAnimation = animation;
+  
+    return animation.finished.then(() => {
+      if (filterCloseAnimation !== animation) return;
+  
+      filterCloseAnimation = null;
+      if (modal.open) modal.close();
+      animation.cancel();
+    }).catch(() => {});
   }
+  modal.addEventListener("cancel", event => {
+    if (!modal.classList.contains("ic-filter-dialog")) return;
+    event.preventDefault();
+    closeModal();
+  });
 
   const journeyArt = `<svg viewBox="0 0 400 275" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path fill="#e8f8ef" d="M-20 70C55 35 91 67 151 48s94-2 125-24 78-15 145 2v226c-70 36-113-5-181 6S89 293-20 243Z"/>
@@ -3660,7 +3711,7 @@
       jobFilters = clone(draftFilters);
       searchedJobs = true;
       jobMode = "search";
-      closeModal();
+      await closeModal();
       render();
       tell("Profile-based filters applied. Open Filters to adjust them.");
       return;
@@ -4079,7 +4130,7 @@
       jobFilters = clone(draftFilters);
       searchedJobs = true;
       jobMode = "search";
-      closeModal();
+      await closeModal();
       render();
       return;
     }
