@@ -2094,7 +2094,6 @@
           internship by posting a review. The App will add this internship to your
           profile. You can always edit at “Me”.
         </p>
-        </p>
         <p class="warning">
           Verification and extraction are simulated. No documents are uploaded.
           A notification records the sample decision.
