@@ -2271,6 +2271,188 @@
       `}`;
   };
 
+  function companyListingPreview(post) {
+    const data = post.draft ?? post.live;
+    if (!data) return null;
+  
+    // A separate view object lets filters inspect drafts without publishing them.
+    const preview = {
+      ...post,
+      live: data,
+      jobMeta: post.jobMeta ? clone(post.jobMeta) : undefined,
+      reviews: post.reviews || []
+    };
+  
+    return prepareJob(preview);
+  }
+  
+  function companyListingCard(post) {
+    const data = post.draft ?? post.live;
+    if (!data) return "";
+  
+    const pending = post.review === "pending";
+    const status = pending
+      ? "Pending"
+      : !post.live ? "Draft" : post.closed ? "Closed" : "Open";
+  
+    const statusClass = pending
+      ? "ic-status-pending"
+      : !post.live ? "ic-status-draft"
+        : post.closed ? "ic-status-closed" : "ic-status-open";
+  
+    const preview = companyListingPreview(post);
+    const meta = preview.jobMeta;
+  
+    return `<article class="card ic-company-job">
+      <div class="row between">
+        <h3>${esc(data.job || "Untitled position")}</h3>
+        <span class="badge ${statusClass}">${status}</span>
+      </div>
+  
+      <div class="ic-company-job-meta">
+        <span>${icon("pin")}${esc(data.location || "Not specified")}</span>
+        <span>${icon("calendar")}${esc(data.duration)} weeks</span>
+        <span>
+          ${icon("clock")}
+          HK$${meta.payMin.toLocaleString("en-HK")}–${meta.payMax.toLocaleString("en-HK")}/month
+        </span>
+      </div>
+  
+      ${pending ? `
+        <p class="muted">
+          Awaiting platform approval.
+          ${post.live ? "The currently approved version remains public." : "Not public yet."}
+        </p>
+      ` : post.draft ? `
+        <p class="muted">
+          ${post.review === "rejected"
+            ? "Changes were rejected. Revise the retained draft and submit again."
+            : "You have a saved draft. Submit it when ready."}
+          ${post.live ? "Your approved version remains public." : ""}
+        </p>
+      ` : ""}
+  
+      ${post.reason ? `<p class="warning">${esc(post.reason)}</p>` : ""}
+  
+      <div class="ic-company-job-actions">
+        ${post.live
+          ? xb("View approved listing", "job-open", post.id, "secondary")
+          : ""}
+  
+        ${!pending ? button(
+          post.draft ? "Edit draft" : "Edit listing",
+          "edit-listing",
+          post.id,
+          "secondary"
+        ) : ""}
+  
+        ${post.draft && !pending ? button(
+          "Submit for approval",
+          "submit-listing",
+          post.id,
+          ""
+        ) : ""}
+  
+        ${post.live ? button(
+          post.closed ? "Reopen applications" : "Close applications",
+          "toggle-listing",
+          post.id,
+          "secondary"
+        ) : ""}
+      </div>
+    </article>`;
+  }
+  
+  function companyManagementPage() {
+    if (!provider()) return deniedPage();
+  
+    const ownListings = db.posts.filter(post =>
+      post.type === "official" && post.owner === currentUserId
+    );
+  
+    const matched = ownListings.filter(post => {
+      const preview = companyListingPreview(post);
+      return preview && matchesJob(preview);
+    });
+  
+    const groups = [
+      {
+        label: "Open",
+        items: matched.filter(post =>
+          post.live && !post.closed && post.review !== "pending"
+        )
+      },
+      {
+        label: "Closed",
+        items: matched.filter(post =>
+          post.live && post.closed && post.review !== "pending"
+        )
+      },
+      {
+        label: "Pending",
+        items: matched.filter(post => post.review === "pending")
+      },
+      {
+        label: "Drafts",
+        items: matched.filter(post =>
+          !post.live && post.review !== "pending"
+        )
+      }
+    ];
+  
+    return `${heading("Manage company internships", "", false)}
+      <p class="muted">
+        Manage your company’s listings. New listings and all edits require
+        platform approval before becoming public.
+      </p>
+  
+      <form data-form="x-job-search"
+        class="ic-job-toolbar ic-company-toolbar" role="search">
+  
+        ${field(
+          "Search company internships", "query", jobQuery, "search", false,
+          'placeholder="Roles, keywords…"'
+        )}
+  
+        <button type="submit" class="ic-search-submit"
+          aria-label="Search company internships" title="Search">
+          ${icon("search")}
+        </button>
+  
+        ${xb(
+          `${icon("filter")} Filters`,
+          "filters",
+          "",
+          "secondary ic-toolbar-filter"
+        )}
+      </form>
+  
+      ${button("＋ Create internship listing", "new-listing", "", "wide")}
+  
+      <p class="muted ic-management-count" role="status">
+        ${matched.length} of ${ownListings.length} company listings
+      </p>
+  
+      <div class="ic-management-groups">
+        ${groups.map(group => `
+          <details class="ic-management-group" open>
+            <summary>
+              <span>${group.label}</span>
+              <span class="badge">${group.items.length}</span>
+            </summary>
+  
+            ${group.items.map(companyListingCard).join("") ||
+              `<p class="empty">No ${group.label.toLowerCase()} listings match.</p>`}
+          </details>
+        `).join("")}
+      </div>`;
+  }
+  
+  pages.internships = () => provider()
+    ? companyManagementPage()
+    : participantInternshipsPage();
+  
+  pages.workspace = companyManagementPage;
   function filterSuggestions(key) {
     return [...new Set(allJobs().flatMap(post => jobValues(post, key)))].sort();
   }
