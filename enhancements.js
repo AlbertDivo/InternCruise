@@ -833,7 +833,7 @@
             <p>Watch advertisements here to earn access to our VIP functions.</p>
             ${xb("Watch ads", "watch-ad", "", "secondary")}
   
-            ${messagingTrialBalance() ? `
+            ${!provider() && messagingTrialBalance() ? `
               ${xb(
                 `${messagingTrialBalance()} messaging trials →`,
                 "navigate",
@@ -2751,16 +2751,32 @@
   };
 
   function engagementJobButtons(post) {
+    if (provider()) {
+      return `<div class="ic-actions">
+        ${post.owner === currentUserId
+          ? xb("Manage this company’s listings", "navigate", "internships")
+          : button("Private inquiry", "post-message", post.id)}
+      </div>`;
+    }
+  
     const wished = (db.wishlists[currentUserId] || []).includes(post.id);
     const compared = (db.comparisons[currentUserId] || []).includes(post.id);
+  
     return `<div class="ic-actions">
-      ${xb(wished ? "♥ Wishlisted" : "♡ Wishlist", "wishlist", post.id, "ic-heart",
-        `aria-pressed="${wished}"`)}
-      ${xb(compared ? "✓ Comparison" : "+ Comparison", "compare-toggle", post.id)}
-      ${post.owner !== currentUserId ? button("Private inquiry", "post-message", post.id) : ""}
+      ${xb(
+        wished ? "♥ Wishlisted" : "♡ Wishlist",
+        "wishlist", post.id, "ic-heart",
+        `aria-pressed="${wished}"`
+      )}
+      ${xb(
+        compared ? "✓ Comparison" : "+ Comparison",
+        "compare-toggle", post.id
+      )}
+      ${post.owner !== currentUserId
+        ? button("Private inquiry", "post-message", post.id)
+        : ""}
     </div>`;
   }
-
   const previousPostPage = pages.post;
   pages.post = () => getPost(route.id)?.type === "official"
     ? pages.internship() : previousPostPage();
@@ -2840,9 +2856,9 @@
       </div>
   
       <div class="ic-ad-copy">
-        <span class="ic-ad-brand">${icon("ship")} InternCruise</span>
-        <h1>Your next<br>journey starts here.</h1>
-        <p>Explore. Learn. Set sail.</p>
+        <span class="ic-ad-brand">Puritea</span>
+        <h1>A little pause.<br>A softer afternoon.</h1>
+        <p>Take a moment with our pure and natural tea collection.</p>
       </div>
   
       <div class="ic-ad-bottom">
@@ -2856,11 +2872,11 @@
         ${xb("Skip", "ad-skip", "", "wide", 'id="rewardAdSkip"')}
   
         <p class="ic-ad-disclaimer">
-          skip is only for ease of demonstration; actual ads will be 30 seconds
+          The "skip" button is only for demonstration purposes; actual ads will be 30 seconds, and skipping will not give rewards.
         </p>
   
         <p class="ic-ad-demo-note">
-          Browser-generated demo video · No real advertiser
+          Fictional third-party brand · No real product or advertiser
         </p>
       </div>
     </section>`;
@@ -2879,102 +2895,138 @@
     let stopped = false;
     let frame = 0;
     let stream = null;
+  
     const start = performance.now();
     const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   
     function draw(now) {
       if (stopped) return;
   
-      const time = reducedMotion ? 0 : (now - start) / 1000;
+      const elapsed = Math.min(30, (now - start) / 1000);
+      const motion = reducedMotion ? 0 : elapsed;
       const width = canvas.width;
       const height = canvas.height;
   
-      const sky = context.createLinearGradient(0, 0, 0, height);
-      sky.addColorStop(0, "#e6f7ee");
-      sky.addColorStop(0.58, "#cbe9dc");
-      sky.addColorStop(1, "#68ab96");
-      context.fillStyle = sky;
+      const background = context.createLinearGradient(0, 0, 0, height);
+      background.addColorStop(0, "#f3f4e7");
+      background.addColorStop(.6, "#dcebdd");
+      background.addColorStop(1, "#b7d4c1");
+  
+      context.fillStyle = background;
       context.fillRect(0, 0, width, height);
   
-      // Sun.
-      context.fillStyle = "#fff1c0";
+      // Soft background circles.
+      context.fillStyle = "#fff4cf";
       context.beginPath();
-      context.arc(555, 340, 65, 0, Math.PI * 2);
+      context.arc(560, 410, 90, 0, Math.PI * 2);
       context.fill();
   
-      // Layered water.
-      for (let layer = 0; layer < 4; layer++) {
-        const level = 670 + layer * 70;
-        context.beginPath();
-        context.moveTo(0, height);
+      context.fillStyle = "#c6dfcb";
+      context.beginPath();
+      context.arc(110, 610, 145, 0, Math.PI * 2);
+      context.fill();
   
-        for (let x = 0; x <= width; x += 8) {
-          const y = level + Math.sin(x / 80 + time + layer) * 13;
-          context.lineTo(x, y);
-        }
-  
-        context.lineTo(width, height);
-        context.closePath();
-        context.fillStyle = ["#a9dac8", "#8bcab5", "#6cb49e", "#509883"][layer];
-        context.fill();
-      }
-  
-      // Softly cruising ship.
       context.save();
-      context.translate(
-        360 + Math.sin(time / 3) * 35,
-        660 + Math.sin(time * 1.4) * 6
-      );
-      context.rotate(Math.sin(time) * 0.015);
+      context.translate(360, 680 + Math.sin(motion) * 4);
+  
+      // Saucer.
+      context.fillStyle = "#8eaf99";
+      context.beginPath();
+      context.ellipse(0, 90, 165, 22, 0, 0, Math.PI * 2);
+      context.fill();
+  
+      context.lineWidth = 7;
+      context.strokeStyle = "#3f7058";
       context.lineJoin = "round";
       context.lineCap = "round";
-      context.lineWidth = 7;
-      context.strokeStyle = "#086b58";
-      context.fillStyle = "#fcfffa";
   
+      // Cup handle.
       context.beginPath();
-      context.moveTo(-170, 0);
-      context.lineTo(180, 0);
-      context.quadraticCurveTo(140, 83, 98, 83);
-      context.lineTo(-106, 83);
-      context.quadraticCurveTo(-145, 75, -170, 0);
+      context.arc(123, -12, 45, -Math.PI / 2, Math.PI / 2);
+      context.stroke();
+  
+      // Cup body.
+      context.fillStyle = "#fffdf3";
+      context.beginPath();
+      context.moveTo(-125, -65);
+      context.lineTo(125, -65);
+      context.lineTo(110, 45);
+      context.quadraticCurveTo(95, 90, 0, 90);
+      context.quadraticCurveTo(-95, 90, -110, 45);
       context.closePath();
       context.fill();
       context.stroke();
   
-      context.fillRect(-110, -62, 218, 62);
-      context.strokeRect(-110, -62, 218, 62);
-      context.fillRect(-55, -112, 106, 50);
-      context.strokeRect(-55, -112, 106, 50);
+      // Tea surface.
+      context.fillStyle = "#bfd0a0";
+      context.beginPath();
+      context.ellipse(0, -65, 125, 23, 0, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
   
-      context.fillStyle = "#b5dfce";
-      for (let x = -75; x <= 75; x += 50) {
+      // Leaf mark.
+      context.fillStyle = "#d6e8cf";
+      context.beginPath();
+      context.ellipse(0, 15, 20, 35, .6, 0, Math.PI * 2);
+      context.fill();
+      context.beginPath();
+      context.moveTo(-13, 40);
+      context.lineTo(14, -9);
+      context.stroke();
+  
+      // Slow steam; static when reduced motion is preferred.
+      context.strokeStyle = "#ffffffc9";
+      context.lineWidth = 9;
+  
+      for (let index = 0; index < 3; index++) {
+        const x = -65 + index * 65;
+        const sway = Math.sin(motion * 1.2 + index) * 12;
+  
         context.beginPath();
-        context.arc(x, -30, 9, 0, Math.PI * 2);
-        context.fill();
+        context.moveTo(x, -115);
+        context.bezierCurveTo(
+          x - 20 + sway, -145,
+          x + 20 + sway, -175,
+          x + sway, -205
+        );
+        context.stroke();
       }
   
       context.restore();
   
-      if (!reducedMotion) frame = requestAnimationFrame(draw);
-    }
+      // Three gentle ten-second scenes.
+      const caption = elapsed < 10
+        ? "Make room for a quiet moment."
+        : elapsed < 20
+          ? "A cup. A pause. A fresh start."
+          : "Mellow Tea · An imaginary little break.";
   
-    draw(performance.now());
+      context.fillStyle = "#3f7058";
+      context.textAlign = "center";
+      context.font = "24px system-ui, sans-serif";
+      context.fillText(caption, width / 2, 855, width - 70);
+  
+      if (elapsed < 30) {
+        frame = requestAnimationFrame(draw);
+      }
+    }
   
     try {
       if (typeof canvas.captureStream === "function") {
-        stream = canvas.captureStream(reducedMotion ? 1 : 24);
+        stream = canvas.captureStream(24);
         video.srcObject = stream;
   
         video.play().then(() => {
           if (!stopped) video.hidden = false;
         }).catch(() => {
-          // The animated canvas remains visible if playback is unavailable.
+          // The canvas animation remains the fallback.
         });
       }
     } catch {
       // Canvas fallback remains available.
     }
+  
+    draw(performance.now());
   
     return () => {
       stopped = true;
@@ -3011,7 +3063,14 @@
   
   function finishRewardAd() {
     const session = rewardAdSession;
-  
+
+    if (
+      provider() ||
+      route.name !== "reward-ad" ||
+      !session ||
+      session.owner !== currentUserId ||
+      session.awarded
+    ) return;
     if (
       route.name !== "reward-ad" ||
       !session ||
@@ -3289,7 +3348,7 @@
       return;
     }
     if (name === "watch-ad") {
-      if (!me()?.verified || !await mayLeave()) return;
+      if (provider() || !me()?.verified || !await mayLeave()) return;
     
       rewardAdSession = {
         owner: currentUserId,
@@ -3317,7 +3376,7 @@
     }
     
     if (name === "trial-chat") {
-      if (trialChatBusy || !me()?.verified) return;
+      if (provider() || trialChatBusy || !me()?.verified) return;
     
       if (!messagingTrialBalance()) {
         return tell("Watch a demo advertisement to earn messaging trials.");
