@@ -1907,7 +1907,10 @@
       <form data-form="x-profile" data-dirty>
         ${field(user.kind === "provider" ? "Contact first name" : "First Name", "firstName", user.firstName)}
         ${field(user.kind === "provider" ? "Contact last name" : "Last Name", "lastName", user.lastName, "text", false)}
-        ${field("Additional/Preferred Name", "preferredName", user.preferredName, "text", false)}
+        ${field(
+          user.kind === "provider" ? "Contact preferred name" : "Additional/Preferred Name",
+          "preferredName", user.preferredName, "text", false
+        )}
         ${field("Headline", "headline", user.headline, "text", false)}
         ${field(user.kind === "provider" ? "Verified company" : "School", "org", user.org, "text", true,
           user.kind === "provider" ? "readonly" : "")}
@@ -1961,7 +1964,7 @@
         ], "invalid")}
         <div class="stack">
           ${company ? `
-            <button name="method" value="employee">Submit valid company employee proof</button>
+            <button name="method" value="company">Submit company verification documents</button>
             <button name="method" value="other">Submit other identity verification documents</button>
           ` : `
             <button name="method" value="id">Submit valid student ID</button>
@@ -1972,9 +1975,18 @@
         </div>
         <p class="muted">Our staff will verify the validity of your documents.</p>
         <p class="muted">
-          The App will automatically identify your school, major,
-          undergraduate/postgraduate status, current year, year of graduation,
-          and location. You can always edit them at your “Me” page after verification.
+          ${company ? `
+            <p class="muted">
+              Company verification links this account to its company.
+              Responsible contact details can be edited in Edit company profile.
+            </p>
+          ` : `
+            <p class="muted">
+              The App will automatically identify your school, major,
+              undergraduate/postgraduate status, current year, year of graduation,
+              and location. You can always edit them at your “Me” page after verification.
+            </p>
+          `}
         </p>
         <br>
         <p class="muted">
