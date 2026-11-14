@@ -1899,7 +1899,7 @@
       </details>`;
   }
 
-  pages.internships = () => {
+  function participantInternshipsPage() {
     const jobs = allJobs();
     const wishlist = db.wishlists[currentUserId] || [];
     const recommendations = jobs.filter(recommendedJob);
@@ -1907,9 +1907,8 @@
       jobMode === "wishlisted" ? wishlist.includes(post.id) : matchesJob(post)
     );
 
-    return `<div class="ic-sticky row between">
+    return `<div class="page-heading">
         <h1>Find your next internship</h1>
-        ${xb("Comparisons", "navigate", "comparisons")}
       </div>
       <p class="ic-subtle internship-demo-note">Explore opportunities. All listings are fictional demos.</p>
       <div class="feed-tabs">
@@ -1917,12 +1916,28 @@
         ${xb("Wishlisted", "job-mode", "wishlisted", "", `aria-pressed="${jobMode === "wishlisted"}"`)}
       </div>
 
-      ${jobMode === "search" ? `
-        <form data-form="x-job-search">
-          ${field("Search internships", "query", jobQuery, "text", false, 'placeholder="Search roles, companies or keywords"')}
-          <div class="row"><button>Search</button>
-            ${xb(`${icon("filter")} Filters`, "filters")}
-          </div>
+      ${<form data-form="x-job-search" class="ic-job-toolbar" role="search">
+          ${field(
+            "Search internships", "query", jobQuery, "search", false,
+            'placeholder="Roles, companies, keywords…"'
+          )}
+        
+          <button type="submit" class="ic-search-submit"
+            aria-label="Search internships" title="Search">
+            ${icon("search")}
+          </button>
+        
+          ${xb(
+            "Comparisons", "navigate", "comparisons",
+            "secondary ic-toolbar-compare"
+          )}
+        
+          ${xb(
+            `${icon("filter")} Filters`,
+            "filters",
+            "",
+            "secondary ic-toolbar-filter"
+          )}
         </form>
         ${searchedJobs ? `
           <h2>Search results (${results.length})</h2>
