@@ -404,7 +404,7 @@ form[data-form="x-job-search"] button{height:39px;padding:8px;font-size:.7rem;ba
 }
 
 .ic-filter-panel {
-  animation: ic-filter-enter-left .25s ease-out both;
+  animation: ic-filter-enter-left .4s cubic-bezier(.22, 1, .36, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -692,3 +692,56 @@ form[data-form="x-job-search"] button{height:39px;padding:8px;font-size:.7rem;ba
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+/* Student Home: four consistent entrances over the route illustration. */
+.student-home-grid{position:relative;isolation:isolate;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px;margin:16px 0 20px;border-radius:20px;overflow:hidden;background:#deeee4}
+.student-home-art{position:absolute;inset:0;z-index:-1;opacity:.7;pointer-events:none}
+.student-home-art svg{width:100%;height:100%;object-fit:cover}
+.student-home-tile{min-width:0;aspect-ratio:1;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:8px;text-align:left;padding:12px;border:1px solid #a7c8b9;border-radius:15px;background:#fcfff9d9;color:#124d41;box-shadow:none;overflow-wrap:anywhere}
+.student-home-tile:hover{background:#f6fff1ed}
+.student-home-tile>.ic-icon{width:25px;height:25px}
+.student-home-tile strong{font-size:.88rem;line-height:1.18;letter-spacing:-.025em}
+.student-home-tile>span{font-size:.63rem;line-height:1.35;color:#5d756b;font-weight:400}
+.student-reward-balance{font-size:.72rem;color:#466d5d;display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px}
+.student-reward-balance button{font-size:.72rem}
+/* Search controls stick only after reaching the phone's content edge. */
+.ic-social-search.student-search{position:sticky;top:-12px;z-index:4;padding:10px 0;background:var(--paper);margin:0 0 15px;border-bottom:1px solid var(--line)}
+.ic-social-search.student-search input{padding-right:109px;height:42px;min-width:0}
+.ic-social-search.student-search .row{top:14px;right:5px;gap:2px}
+.ic-social-search.student-search .row button{font-size:.75rem;padding:5px;min-height:32px}
+.student-job-search{position:sticky;top:-12px;z-index:4;display:grid;grid-template-columns:minmax(0,1fr) 32px 78px 64px;align-items:center;gap:5px;margin:0 0 15px;padding:10px 0;background:var(--paper);border-bottom:1px solid var(--line)}
+.student-job-search label{font-size:0;margin:0;min-width:0}
+.student-job-search input{width:100%;min-width:0;margin:0;height:40px;padding:7px;font-size:.73rem}
+.student-job-search button{padding:7px 4px;font-size:.66rem;min-height:40px;white-space:nowrap}
+.student-job-search button>.ic-icon{width:15px;height:15px}
+/* Membership status is separate from the verified-identity badge. */
+.premium-status{display:inline-flex;align-items:center;justify-content:center;min-height:24px;margin:5px 4px 0 0;padding:3px 7px;border:1px solid transparent;font-size:.67rem;line-height:1.3;letter-spacing:0;box-shadow:none;white-space:normal}
+.premium-status.is-free{background:#def6e9;color:#006c50;border-color:#bfdecd}
+.premium-status.is-premium{background:#f8e6a9;color:#735216;border-color:#dfc371}
+.student-me-stats>div{padding:10px 4px;background:#e7f2eb;border:1px solid #d2e5d9;border-radius:10px;color:#3e6558}
+.student-me-stats strong{color:#075648;font-size:1.4rem}
+.student-me-stats span{color:#3e6558}
+.premium-overview{background:#f2f7ef}.premium-overview h2{margin-top:14px}
+.premium-plan h2{font-size:1.1rem}.premium-price{font-size:1.05rem;font-weight:700;color:#37684e}
+.premium-plan p,.premium-feature-list p{font-size:.8rem;line-height:1.5}
+.premium-plan .wide{margin-top:10px}
+.me-overview .profile-top .badge{display:inline-flex;align-items:center;min-height:24px;line-height:1.3;margin:5px 4px 0 0}
+/* Company navigation and listing management. */
+.phone[data-account-kind="provider"] .app-menu{grid-template-columns:repeat(4,minmax(0,1fr))}
+.company-settings-row{display:flex;justify-content:flex-end;margin:0 0 8px}
+.company-management>.wide{margin-top:12px}
+.company-links>button{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.company-manage-search{position:sticky;top:-12px;z-index:4;background:var(--paper);display:grid;grid-template-columns:minmax(0,1fr) 36px 76px;gap:6px;align-items:center;padding:10px 0;margin:0 0 14px;border-bottom:1px solid var(--line)}
+.company-manage-search label{font-size:0;margin:0;min-width:0}
+.company-manage-search input{margin:0;min-width:0;height:40px;font-size:.78rem}
+.company-manage-search button{padding:8px 5px;min-height:40px;font-size:.73rem}
+.company-role-group{margin-top:17px}
+.company-role-group>summary{font-size:.92rem;font-weight:700;color:#275b4d;padding:9px 0;cursor:pointer;border-bottom:1px solid var(--line)}
+.company-role-group>summary span{display:inline-block;font-size:.7rem;border-radius:12px;padding:2px 7px;background:#e5efe7;margin-left:5px}
+.company-managed-role h3{font-size:.94rem;line-height:1.3;margin:0;overflow-wrap:anywhere}
+.company-managed-role .row.between{align-items:flex-start;flex-wrap:nowrap;gap:8px}
+.company-managed-role .row button{font-size:.72rem;padding:7px 10px}
+.listing-state{flex:none;white-space:nowrap}
+.listing-state.state-open{background:#dff2e7;color:#076448}
+.listing-state.state-closed{background:#f9dddd;color:#982d35}
+.listing-state.state-pending{background:#fff0c2;color:#895d0b}
+.listing-state.state-drafts{background:#eceeea;color:#5f6a62}

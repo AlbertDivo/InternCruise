@@ -51,7 +51,7 @@ function seed() {
     },
     {
       id: "u-provider", username: "provider", name: "Alex Lee",
-      kind: "provider", identity: "Company employee", verified: true,
+      kind: "provider", identity: "Company", verified: true,
       org: "Harbour Studio", major: "People & Talent",
       location: "Hong Kong",
       headline: "Helping early-career designers find their starting point",
@@ -60,7 +60,7 @@ function seed() {
     },
     {
       id: "u-orbit", username: "orbit", name: "Morgan Lau",
-      kind: "provider", identity: "Company employee", verified: true,
+      kind: "provider", identity: "Company", verified: true,
       org: "Orbit Analytics", major: "Recruitment",
       location: "Hong Kong", headline: "Data internships with real projects",
       bio: "Our interns work alongside analysts and engineers.",
@@ -85,7 +85,7 @@ function seed() {
         job: "Product Design Intern",
         duration: 6,
         location: "Hong Kong",
-        pay: "HK$70/hour · Sample figure",
+        pay: "HK$12,320/month · Sample figure",
         deadline: "",
         body: "Help our product team design onboarding screens, run usability tests and present your findings.",
         requirements: "University student; curiosity about design; a small portfolio is welcome."
@@ -96,7 +96,7 @@ function seed() {
         job: "Data Analyst Intern",
         duration: 12,
         location: "Hong Kong",
-        pay: "HK$75/hour · Sample figure",
+        pay: "HK$13,200/month · Sample figure",
         deadline: "",
         body: "Clean datasets, write SQL queries and build a dashboard with support from the analytics team.",
         requirements: "Basic spreadsheet skills. Introductory SQL is helpful."
@@ -422,7 +422,7 @@ function signupPage() {
       ${field("Username, fictional email or phone", "username")}
       ${field("Display name", "name")}
       ${selectField("Identity / verification route", "identity", [
-        "Student", "Alumni", "Company employee"
+        "Student", "Alumni", "Company"
       ], "Student")}
       ${field("School or company name", "org")}
       ${field("Demo password", "password", "", "password", true, 'autocomplete="off"')}
@@ -438,14 +438,14 @@ function verifyPage() {
   const user = me();
   return `${heading("Verify your identity", "Sample verification only—do not upload real ID.")}
     <div class="card">
-      <strong>${esc(user.name)}</strong>
+      <strong>${esc(user.kind === "provider" ? user.org : user.name)}</strong>
       <p>${esc(user.identity)} · ${esc(user.org)}</p>
     </div>
     <form data-form="verify">
       ${selectField("Proof to simulate", "proof", [
         ["invalid", "Invalid sample document"],
         ["valid", user.kind === "provider"
-          ? "Valid sample company-employee proof"
+          ? "Valid sample company proof"
           : "Valid sample student / alumni proof"]
       ], "invalid")}
       <button class="wide">Submit sample proof</button>
@@ -816,57 +816,7 @@ function editProfilePage() {
 /* ---------------------- Employer listings ---------------------- */
 
 function workspacePage() {
-  if (!provider()) return deniedPage();
-  const listings = db.posts.filter((post) =>
-    post.type === "official" && post.owner === currentUserId
-  );
-  const chats = db.chats.filter((chat) =>
-    chat.context.startsWith("listing:") &&
-    chat.participants.some((person) => actorOwner(person) === currentUserId)
-  );
-
-  return `${heading("Edit Internship Information", me().org)}
-    ${button("＋ Create internship listing", "new-listing", "", "wide")}
-    <p class="muted">
-      Platform approvals are available only through the classroom simulator outside the phone.
-    </p>
-
-    ${listings.map((post) => {
-      const data = post.draft ?? post.live;
-      return `<article class="card">
-        <h2>${esc(data.title || "Untitled draft")}</h2>
-        <p>${esc(data.job)}</p>
-        <p class="badge">${esc(post.review)}</p>
-        <p class="muted">
-          ${post.live ? "Published version remains visible." : "Not publicly visible yet."}
-          ${post.closed ? " Applications closed." : ""}
-        </p>
-        ${post.reason ? `<p class="warning">${esc(post.reason)}</p>` : ""}
-        <div class="stack">
-          ${post.live ? button("View live listing", "post", post.id) : ""}
-          ${post.review === "pending"
-            ? '<p class="muted">Awaiting platform review.</p>'
-            : !post.live || post.access === "approved"
-              ? button(post.draft ? "Continue editing draft" : "Edit internship information",
-                "edit-listing", post.id)
-              : post.access === "requested"
-                ? '<p class="muted">Edit-access request is pending.</p>'
-                : button("Request edit access", "request-edit", post.id)}
-          ${post.draft && post.review !== "pending" &&
-            (!post.live || post.access === "approved")
-            ? button("Submit draft for review", "submit-listing", post.id) : ""}
-          ${post.live ? button(
-            post.closed ? "Reopen applications" : "Close applications",
-            "toggle-listing", post.id
-          ) : ""}
-        </div>
-      </article>`;
-    }).join("") || '<p class="empty">No listings yet.</p>'}
-
-    <h2>Private internship inquiries</h2>
-    ${chats.length
-      ? chats.map(chatRow).join("")
-      : '<p class="empty">No inquiries yet. Send one from a participant account.</p>'}`;
+  return provider() ? pages.manage() : deniedPage();
 }
 
 function listingPage() {
@@ -874,8 +824,7 @@ function listingPage() {
   const post = route.id ? getPost(route.id) : null;
   if (post && (
     post.owner !== currentUserId ||
-    post.review === "pending" ||
-    (post.live && post.access !== "approved")
+    post.review === "pending" || post.type !== "official"
   )) return deniedPage();
 
   const data = post?.draft ?? post?.live ?? {
@@ -890,7 +839,7 @@ function listingPage() {
       ${field("Job title", "job", data.job)}
       ${field("Duration (weeks)", "duration", data.duration, "number", true, 'min="1" max="104" step="1"')}
       ${field("Location / working arrangement", "location", data.location)}
-      ${field("Pay / allowance", "pay", data.pay, "text", false)}
+      ${field("Monthly pay / allowance (HKD)", "pay", data.pay, "text", false, 'placeholder="e.g. HK$12,000–15,000/month"')}
       ${field("Application deadline", "deadline", data.deadline, "date", false)}
       ${area("Job description", "body", data.body)}
       ${area("Requirements", "requirements", data.requirements, false)}
@@ -902,9 +851,6 @@ function listingPage() {
 }
 
 function simulatorPage() {
-  const access = db.posts.filter((post) =>
-    post.type === "official" && post.access === "requested"
-  );
   const pending = db.posts.filter((post) =>
     post.type === "official" && post.review === "pending"
   );
@@ -917,18 +863,6 @@ function simulatorPage() {
         Employers must not have these permissions in a real system.
       </p>
     </div>
-
-    <h2>Edit-access requests</h2>
-    ${access.map((post) => `
-      <article class="card">
-        <h3>${esc(post.live.title)}</h3>
-        <p>${esc(getUser(post.owner)?.org)}</p>
-        <div class="row">
-          ${button("Approve edit access", "access-approve", post.id)}
-          ${button("Reject request", "access-reject", post.id, "danger")}
-        </div>
-      </article>
-    `).join("") || '<p class="empty">No edit-access requests.</p>'}
 
     <h2>Listing submissions</h2>
     ${pending.map((post) => `
@@ -1235,21 +1169,7 @@ document.addEventListener("click", async (event) => {
   }
 
   // The simulator is a deliberate classroom-only permission bypass.
-  if (["access-approve", "access-reject"].includes(action)) {
-    if (route.name !== "simulator") return;
-    const post = getPost(id);
-    if (!post || post.access !== "requested") return;
-    const approved = action === "access-approve";
-    post.access = approved ? "approved" : "none";
-    post.reason = approved ? "" : "Edit-access request rejected. You can request access again.";
-    notify(post.owner,
-      approved ? "Edit access approved." : "Edit-access request rejected.",
-      { name: "workspace" });
-    persist();
-    render();
-    tell(approved ? "Edit access approved by the simulated platform." : "Edit-access request rejected.");
-    return;
-  }
+
 
   if (!me()?.verified) return go("account");
 
@@ -1294,23 +1214,10 @@ document.addEventListener("click", async (event) => {
     return go("listing", { id });
   }
 
-  if (action === "request-edit") {
-    const post = getPost(id);
-    if (!post || post.owner !== currentUserId || !provider() ||
-        !post.live || post.review === "pending") return;
-    post.access = "requested";
-    post.reason = "";
-    persist();
-    render();
-    tell("Request sent. Use the Platform review simulator outside the phone.");
-    return;
-  }
-
   if (action === "submit-listing") {
     const post = getPost(id);
     if (!post || post.owner !== currentUserId || !provider() ||
-        post.review === "pending" ||
-        (post.live && post.access !== "approved")) return;
+        post.review === "pending" || post.type !== "official") return;
     if (!queueListing(post)) return;
     persist();
     render();
@@ -1484,7 +1391,7 @@ document.addEventListener("submit", async (event) => {
     const identity = text("identity");
     db.users.push({
       id: uid(), username, name: text("name"), identity,
-      kind: identity === "Company employee" ? "provider" : "participant",
+      kind: identity === "Company" ? "provider" : "participant",
       verified: false, org: text("org"), major: "", location: "",
       headline: "", bio: "", interests: "",
       alias: `Anonymous ${101 + db.users.length}`
@@ -1716,9 +1623,8 @@ document.addEventListener("submit", async (event) => {
     if (!provider()) return;
     let post = form.dataset.id ? getPost(form.dataset.id) : null;
     if (post && (
-      post.owner !== currentUserId || post.review === "pending" ||
-      (post.live && post.access !== "approved")
-    )) return fail("Edit access is not available.");
+      post.owner !== currentUserId || post.review === "pending" || post.type !== "official"
+    )) return fail("This listing is unavailable or awaiting platform review.");
 
     const draft = {
       title: text("title"), company: me().org, job: text("job"),

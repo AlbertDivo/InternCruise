@@ -1,0 +1,18 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const src=fs.readFileSync(__dirname+'/enhancements.js','utf8');
+const user={id:'me',kind:'participant',premiumDemo:false};
+const c=vm.createContext({pages:{home:()=> 'PROVIDER HOME'},provider:()=>user.kind==='provider',me:()=>user,missingPage:()=> 'DENIED',heading:s=>s,journeyArt:'<svg/>',icon:()=>'',xb:(label,action,id,classes)=>`<button class="${classes}" data-action="x-${action}" data-id="${id}">${label}</button>`,homeExplorePosts:()=> 'EXPLORE POSTS',messagingTrialBalance:()=>0});
+vm.runInContext(src.slice(src.indexOf('  const providerHome ='),src.indexOf('  // Preserve the previous feed')),c);
+let html=c.pages.home();
+const titles=['Internship information list','The Community','InternCruise Premium','Advertisements for rewards'];
+for(let i=1;i<titles.length;i++)assert.ok(html.indexOf(titles[i-1])<html.indexOf(titles[i]));
+assert.ok(html.includes('EXPLORE POSTS'));assert.equal((html.match(/student-home-tile/g)||[]).length,4);
+html=c.pages.premium();assert.ok(html.includes('Price to be confirmed'));assert.ok(html.includes('No payment'));assert.ok(!html.includes('Open feature'));
+user.premiumDemo=true;html=c.pages.premium();assert.equal((html.match(/Open feature/g)||[]).length,3);assert.ok(html.includes('Switch to free'));assert.ok(vm.runInContext('premiumBadge(me())',c).includes('is-premium'));
+user.kind='provider';assert.equal(c.pages.home(),'PROVIDER HOME');assert.equal(c.pages.premium(),'DENIED');
+Object.assign(c,{name:'premium-demo',id:'premium',persist:()=>{throw Error('provider must not mutate')},render:()=>{}});
+const start=src.indexOf('    if (name === "premium-demo")');const handler=src.slice(start,src.indexOf('    if (name === "watch-ad")',start));
+vm.runInContext('(function(){'+handler+'})()',c);
+user.kind='participant';let saves=0;c.persist=()=>saves++;vm.runInContext('(function(){'+handler+'})()',c);assert.equal(user.premiumDemo,true);c.id='free';vm.runInContext('(function(){'+handler+'})()',c);assert.equal(user.premiumDemo,false);assert.equal(saves,2);
+assert.ok(src.includes('["saved", "Favorites"]'));assert.ok(src.includes('student-job-search'));assert.ok(src.includes('Skip is only for ease of demonstration; actual ads will be 30 seconds.'));assert.ok(src.includes('Moss &amp; Mug'));
+console.log('Passed: four Home entries, explore section, free/Premium views and state persistence, provider isolation, Favorites label and third-party ad copy.');

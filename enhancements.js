@@ -6,6 +6,8 @@
 
   const ICONS = {
     ship: `<path d="M9.5 5V2.5h5V5M6 10V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3M2.5 12 12 9l9.5 3c-1.2 4.7-3.8 7-6.7 6.5L12 18l-2.8.5C6.3 19 3.7 16.7 2.5 12ZM12 9v9M1.5 21c2-1.5 3-1.5 5 0s3 1.5 5 0 3-1.5 5 0 3 1.5 5 0"/><path d="M9 7.5h.5m5 0h.5" stroke-width="1.8"/>`,
+    question: `<circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 0 1 6 0c0 2-3 2-3 5M12 17h.01"/>`,
+    briefcase: `<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V3h8v4M3 12h18M10 12v3h4v-3"/>`,
     heart: `<path d="M20 4c-3-2-6 0-8 2-2-2-5-4-8-2-5 4 0 10 8 16 8-6 13-12 8-16Z"/>`,
     eye: `<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/>
       <circle cx="12" cy="12" r="3"/>`,
@@ -81,6 +83,9 @@
     db.wishlists ??= {};
     db.comparisons ??= {};
     db.reports ??= [];
+    for (const user of db.users) {
+      if (user.kind === "provider") user.identity = "Company";
+    }
 
     for (const user of db.users) {
       const parts = user.name.split(/\s+/);
@@ -100,8 +105,9 @@
     }
 
     for (const post of db.posts) {
-      if (post.type !== "official" || !post.live) continue;
-      prepareJob(post);
+      if (post.type !== "official") continue;
+      if (post.draft) post.draft.pay = monthlyPayText(post.draft.pay);
+      if (post.live) prepareJob(post);
     }
 
     if (!db.expandedSamples) {
@@ -298,14 +304,14 @@
       db.posts.push({
         id, owner, type: "official", anonymous: false,
         live: { company, job, duration, title, body, requirements,
-          location: "Hong Kong", pay: `HK$${pay}/hour · Sample figure`, deadline: "" },
+          location: "Hong Kong", pay: `HK$${(pay * 176).toLocaleString("en-HK")}/month · Sample figure`, deadline: "" },
         draft: null, review: "live", access: "none", reason: "", closed: false,
         likes: [], sampleLikes: 6 + index * 4, sampleFavorites: 2 + index,
         views: 40 + index * 23, questions: [],
         created: new Date(Date.UTC(2026, 10, 11 - index, 8)).toISOString()
       });
       const post = prepareJob(getPost(id));
-      Object.assign(post.jobMeta, { arrangement, payMin: pay, payMax: pay, fields, skills });
+      Object.assign(post.jobMeta, { arrangement, payMin: pay * 176, payMax: pay * 176, fields, skills });
     });
     examples.forEach(([key, owner, source, title, body, likes, saves, views, anonymous = false], index) => {
       const id = `sample-post-${key}`;
@@ -331,12 +337,21 @@
     }
   }
 
+  function monthlyPayText(value) {
+    if (!/(?:\/\s*(?:hour|hr)\b|per\s+hour\b)/i.test(value || "")) return value;
+    const parts = value.split(/(\/\s*(?:hour|hr)\b|per\s+hour\b)/i);
+    parts[0] = parts[0].replace(/\d[\d,]*(?:\.\d+)?/g, number =>
+      Math.round(Number(number.replaceAll(",", "")) * 176).toLocaleString("en-HK"));
+    parts[1] = "/month";
+    return parts.join("");
+  }
+
   function prepareJob(post) {
     post.jobMeta ??= {
       arrangement: post.id === "p-orbit" ? "Hybrid" : "Offline",
-      payMin: post.id === "p-orbit" ? 75 : 70,
-      payMax: post.id === "p-orbit" ? 90 : 85,
-      payUnit: "HKD/hour",
+      payMin: post.id === "p-orbit" ? 13200 : 12320,
+      payMax: post.id === "p-orbit" ? 15840 : 14960,
+      payUnit: "HKD/month",
       fields: post.id === "p-orbit" ? ["Data Science", "Computer Science"] : ["Business", "Design"],
       skills: post.id === "p-orbit" ? ["SQL", "Excel"] : ["Communication", "Figma"],
       graduation: ["2026", "2027", "2028"],
@@ -360,6 +375,22 @@
         "Mentorship": [29, 1]
       }
     };
+    if (post.jobMeta.payUnit === "HKD/hour") {
+      post.jobMeta.payMin = Math.round(post.jobMeta.payMin * 176);
+      post.jobMeta.payMax = Math.round(post.jobMeta.payMax * 176);
+      post.jobMeta.payUnit = "HKD/month";
+    }
+    if (post.live) post.live.pay = monthlyPayText(post.live.pay);
+    if (post.draft) post.draft.pay = monthlyPayText(post.draft.pay);
+    const pay = post.live?.pay;
+    if (pay && !pay.includes("Sample figure") && pay !== post.jobMeta.paySource) {
+      const values = pay.match(/\d[\d,]*(?:\.\d+)?/g) || [];
+      if (values.length > 0 && values.length <= 2) {
+        post.jobMeta.payMin = Number(values[0].replaceAll(",", ""));
+        post.jobMeta.payMax = Number((values[1] || values[0]).replaceAll(",", ""));
+      }
+    }
+    post.jobMeta.paySource = pay;
     post.reviews ??= [];
     prepareItems(post.reviews);
     return post;
@@ -436,13 +467,14 @@
     const page = isAuthorProfile(route)
       ? [...navigation].reverse().find(entry => !isAuthorProfile(entry)) || { name: "posts" }
       : route;
+    if (provider() && ["workspace", "listing", "internships"].includes(page.name)) return "internships";
     return page.name.startsWith("forum") || page.name === "hashtag"
       ? "forum"
       : ["internships", "comparisons", "internship", "review", "internship-proof"].includes(page.name)
         ? "internships"
         : ["posts", "create", "experience", "post"].includes(page.name)
           ? "posts"
-          : ["profile", "edit-profile", "favorites", "profile-item", "resume", "career-profile", "full-profile", "workspace", "listing"].includes(page.name)
+          : ["profile", "edit-profile", "favorites", "profile-item", "resume", "career-profile", "full-profile", "premium", "workspace", "listing"].includes(page.name)
             ? "profile" : "home";
   }
 
@@ -450,7 +482,19 @@
 
   render = function () {
     migrate();
+    if (provider() && me()?.verified && ["home", "reward-ad", "premium", "community", "comparisons", "trial-people"].includes(route.name)) {
+      route = { name: "internships" };
+    }
+    if (me()?.premiumDemo && route.name === "trial-people") {
+      route = { name: "people" };
+    }
+    if (currentUserId !== jobFilterOwner) {
+      jobFilters = emptyJobFilters(); draftFilters = emptyJobFilters(); jobQuery = ""; searchedJobs = false; jobMode = "search";
+      jobFilterOwner = currentUserId;
+    }
     originalRender();
+    document.querySelector(".phone").dataset.accountKind = me()?.kind || "";
+    renderMainNavigation();
     $("screen").dataset.page = route.name;
     document.querySelector(".phone").dataset.page = route.name;
 
@@ -475,17 +519,12 @@
   document.querySelector(".brand").innerHTML = `${icon("ship")} InternCruise`;
   document.querySelector(".app-header strong").innerHTML = `${icon("ship")} InternCruise`;
 
-  $("appMenu").innerHTML = [
-    ["posts", "Posts", "posts"],
-    ["forum", "Forum", "forum"],
-    ["home", "Home", "home"],
-    ["internships", "Internships", "jobs"],
-    ["profile", "Me", "me"]
-  ].map(([id, label, image]) => `
-    <button type="button" data-action="tab" data-id="${id}">
-      ${icon(image)}${label}
-    </button>
-  `).join("");
+  function renderMainNavigation() {
+    const tabs = provider()
+      ? [["posts", "Posts", "posts"], ["forum", "Forum", "forum"], ["internships", "Manage", "briefcase"], ["profile", "Me", "me"]]
+      : [["posts", "Posts", "posts"], ["forum", "Forum", "forum"], ["home", "Home", "home"], ["internships", "Internships", "jobs"], ["profile", "Me", "me"]];
+    $("appMenu").innerHTML = tabs.map(([id, label, image]) => `<button type="button" data-action="tab" data-id="${id}">${icon(image)}${label}</button>`).join("");
+  }
 
   function redrawPreservingInputs() {
     const screen = $("screen");
@@ -678,7 +717,7 @@
   
       ${xb("Watch ads", "watch-ad", "", "wide")}
   
-      ${messagingTrialBalance() ? `
+      ${!me()?.premiumDemo && messagingTrialBalance() ? `
         <p class="muted">
           ${messagingTrialBalance()} free private messaging
           ${messagingTrialBalance() === 1 ? "trial" : "trials"} available.
@@ -690,6 +729,50 @@
     </section>
   
     ${homeExplorePosts()}`;
+
+  const providerHome = pages.home;
+  pages.home = () => provider() ? providerHome() : `${heading("Your next starting point", "Explore opportunities, learn together and take your next step.", false)}
+    <section class="student-home-grid" aria-label="Explore InternCruise">
+      <div class="student-home-art" aria-hidden="true">${journeyArt}</div>
+      ${[["Internship information list", "Find your next role", "internships", "jobs"],
+        ["The Community", "Stories, questions & advice", "community", "forum"],
+        ["InternCruise Premium", "Explore membership", "premium", "star"],
+        ["Advertisements for rewards", "Watch ads · Earn messaging trials", "reward", "heart"]].map(([title, subtitle, target, image]) =>
+        xb(`${icon(image)}<strong>${title}</strong><span>${subtitle}</span>`, target === "reward" ? "watch-ad" : "navigate", target === "reward" ? "" : target, "student-home-tile")).join("")}
+    </section>
+    ${!me()?.premiumDemo && messagingTrialBalance() ? `<p class="student-reward-balance">${messagingTrialBalance()} free messaging trials ${xb("Use a trial →", "navigate", "trial-people", "link-button")}</p>` : ""}
+    ${homeExplorePosts()}`;
+
+  pages.community = () => provider() ? missingPage() : `${heading("The Community", "Learn from experience. Ask your next question.")}
+    <section class="card"><h2>Posts</h2><p>Read internship stories and official posts.</p>${xb("Explore posts →", "navigate", "posts", "wide")}</section>
+    <section class="card"><h2>Forum</h2><p>Ask questions and join conversations.</p>${xb("Visit Forum →", "navigate", "forum", "wide")}</section>`;
+
+  function premiumBadge(user) {
+    return xb(user.premiumDemo ? "InternCruise Premium" : "Free account", "navigate", "premium",
+      `badge premium-status ${user.premiumDemo ? "is-premium" : "is-free"}`);
+  }
+
+  pages.premium = () => {
+    if (!me() || provider()) return missingPage();
+    const premium = me().premiumDemo === true;
+    return `${heading("Premium Center", "A preview of InternCruise membership.")}
+      <section class="card premium-overview">${premiumBadge(me())}
+        <h2>${premium ? "Your Premium features" : "Choose your membership"}</h2>
+        <p>${premium ? "Explore the feature previews below." : "Compare the free account and proposed Premium plan."}</p>
+        <p class="muted">Demo only · No payment or recurring subscription. Prices and final benefits are to be confirmed.</p>
+      </section>
+      ${premium ? `<div class="premium-feature-list">
+        ${[["Personalized internships", "Open the existing profile-based recommendations.", "internships"],
+          ["Compare opportunities", "Compare the roles you have selected.", "comparisons"],
+          ["Private messaging", "Start a conversation in this local demo.", "people"]].map(([title, text, target]) => `<section class="card"><h2>${title}</h2><p>${text}</p>${xb("Open feature →", "navigate", target, "secondary")}</section>`).join("")}
+        <p class="muted">These previews reuse existing demo tools. Free accounts retain their current access; no Premium-only service is connected.</p>
+        ${xb("Switch to free account · Demo", "premium-demo", "free", "secondary wide")}
+      </div>` : `<section class="card premium-plan"><h2>Free account</h2><p class="premium-price">Free</p>
+        <p>Browse internships, read posts, join discussions and save favorites.</p><span class="badge">Current plan</span></section>
+        <section class="card premium-plan"><h2>InternCruise Premium</h2><p class="premium-price">Price to be confirmed</p>
+        <p>Proposed areas: personalized discovery, career planning tools and messaging benefits. Final entitlements are not yet defined.</p>
+        ${xb("Try Premium preview · Demo", "premium-demo", "premium", "wide")}</section>`}`;
+  };
 
   // Preserve the previous feed, but move it to Posts.
   let postsMode = "recommended";
@@ -746,7 +829,7 @@
         ${xb("All posts", "posts-mode", "all", "secondary",
           `aria-pressed="${postsMode === "all"}"`)}
       </nav>
-      <form data-form="x-posts-search" class="ic-social-search" role="search">
+      <form data-form="x-posts-search" class="ic-social-search ${provider() ? "" : "student-search"}" role="search">
         ${field("Search posts", "query", postsQuery, "search", false,
           'placeholder="Search stories, companies, roles or authors"')}
         <div class="row"><button>Search</button>${xb("Clear", "posts-clear")}</div>
@@ -770,7 +853,7 @@
       ${xb("＋ Start chat", "navigate", "people")}
     </div>
   
-    ${messagingTrialBalance() ? `
+    ${!provider() && !me()?.premiumDemo && messagingTrialBalance() ? `
       <div class="ic-inbox-reward">
         <span>${messagingTrialBalance()} free messaging trials</span>
         ${xb("Use a trial", "navigate", "trial-people", "link-button")}
@@ -951,10 +1034,9 @@
     ));
 
     return `${heading("Forum", "Ask, share and learn together.", false)}
-      <form data-form="x-forum-search">
-        ${field("Search discussions or #hashtags", "query", forumQuery, "text", false)}
-        <button>Search</button>
-        ${xb("Clear", "forum-clear")}
+      <form data-form="x-forum-search" class="${provider() ? "" : "ic-social-search student-search"}" role="search">
+        ${field("Search discussions or #hashtags", "query", forumQuery, "search", false, 'placeholder="Search discussions or #hashtags"')}
+        <div class="row"><button>Search</button>${xb("Clear", "forum-clear")}</div>
       </form>
       <p>${xb("＋ New forum post", "forum-compose", "", "wide")}</p>
       ${forumResults(matched)}`;
@@ -1251,27 +1333,23 @@
   }
 
   function renderStudentMe(user) {
-    const view = meView();
-    const category = view.categories[view.tab] || "posts";
-    const entries = meEntries(view.tab, category);
     const all = profileEntries();
     const owned = all.filter(entry => entry.item.owner === currentUserId);
     const likes = owned.reduce((sum, entry) => sum + likesOf(entry.item), 0);
     const wished = allJobs().filter(post => (db.wishlists[currentUserId] || []).includes(post.id)).reverse();
     const savedCount = all.filter(entry => isFavorite(entry.kind, entry.item.id)).length + wished.length;
-    const browse = category === "forum" ? "forum" : category === "internships" ? "internships" : "posts";
     return `<section class="me-overview">
       <div class="row between"><span class="eyebrow">My profile</span>
         <details class="me-settings"><summary aria-label="Account settings">${icon("me")} Settings</summary>
           <div>${button("Log out", "logout", "", "secondary wide")}</div>
         </details></div>
       <div class="profile-top">${avatar(user)}<div><h1>${esc(fullName(user))}</h1>
-        <span class="badge">${esc(user.identity)} · Demo verified</span></div></div>
+        <span class="badge">${esc(user.identity)} · Demo verified</span>${premiumBadge(user)}</div></div>
       <p class="me-school">${esc(user.org)} · ${esc(user.major || "Major not added")}</p>
       <p class="muted">${icon("pin")}${esc(user.location || "Location not added")}</p>
       <p class="me-bio">${esc(user.headline || user.bio || "Add a short introduction to your profile.")}</p>
       <div class="me-skills">${(user.skills || []).slice(0, 3).map(skill => `<span>${esc(skill)}</span>`).join("")}</div>
-      <div class="me-stats"><div><strong>${owned.filter(entry => !entry.comment).length}</strong><span>Published</span></div>
+      <div class="me-stats student-me-stats"><div><strong>${owned.filter(entry => !entry.comment).length}</strong><span>Published</span></div>
         <div><strong>${likes}</strong><span>Likes received</span></div><div><strong>${savedCount}</strong><span>Saved items</span></div></div>
       ${button("Edit profile", "edit-profile", "", "secondary wide")}
     </section>
@@ -1279,11 +1357,21 @@
       ${xb(`<span><strong>My résumé</strong><small>${user.resumeDemo ? "Sample résumé added · Update" : "Not added · Add a sample résumé"}</small></span><b>›</b>`, "navigate", "resume", "me-career-link")}
       ${xb(`<span><strong>Career profile</strong><small>${(user.experiences || []).length} ${(user.experiences || []).length === 1 ? "experience" : "experiences"} · Skills & interests</small></span><b>›</b>`, "navigate", "career-profile", "me-career-link")}
       ${xb('<span><strong>View full profile</strong><small>Education, graduation & about</small></span><b>›</b>', "navigate", "full-profile", "me-career-link")}
+      ${xb('<span><strong>Premium Features</strong><small>Membership plans & feature previews</small></span><b>›</b>', "navigate", "premium", "me-career-link")}
     </section>
-    <section class="me-content">
+    ${profileActivity()}`;
+  }
+
+  function profileActivity() {
+    const view = meView();
+    const category = view.categories[view.tab] || "posts";
+    const entries = meEntries(view.tab, category);
+    const wished = provider() ? [] : allJobs().filter(post => (db.wishlists[currentUserId] || []).includes(post.id)).reverse();
+    const browse = category === "forum" ? "forum" : category === "internships" ? "internships" : "posts";
+    return `    <section class="me-content">
       <div class="me-tabs-sticky">
         <nav class="me-tabs" aria-label="My content">
-          ${[["published", "Published"], ["comments", "Comments"], ["saved", "Saved"], ["liked", "Liked"]].map(([key, label]) =>
+          ${[["published", "Published"], ["comments", "Comments"], ["saved", "Favorites"], ["liked", "Liked"]].map(([key, label]) =>
             xb(label, "me-tab", key, "", `aria-pressed="${view.tab === key}" aria-controls="meContent"`)).join("")}
         </nav>
         <nav class="me-subtabs" aria-label="Content type">
@@ -1292,8 +1380,7 @@
         </nav>
       </div>
       <div id="meContent" aria-label="${esc(view.tab)} ${esc(category)}">
-        ${view.tab === "saved" && category === "internships" ? `<h2 class="me-section-label">Wishlisted internships (${wished.length})</h2>
-          ${wished.map(jobRow).join("")}${entries.length ? '<h2 class="me-section-label">Saved internship comments</h2>' : ""}` : ""}
+        ${view.tab === "saved" && category === "internships" ? `${provider() ? "" : `<h2 class="me-section-label">Wishlisted internships (${wished.length})</h2>${wished.map(jobRow).join("")}`}${entries.length ? '<h2 class="me-section-label">Saved internship comments</h2>' : ""}` : ""}
         ${entries.map(entry => meEntryCard(entry, view.tab)).join("")}
         ${!entries.length && !(view.tab === "saved" && category === "internships" && wished.length)
           ? `<div class="me-empty"><p>No ${view.tab === "published" ? "published content" : view.tab === "comments" ? "comments" : view.tab === "saved" ? "saved items" : "liked content"} here yet.</p>
@@ -1333,47 +1420,20 @@
 
     if (user.kind === "provider" && !anonymous) {
       const listings = db.posts.filter(post => post.type === "official" && post.owner === user.id);
-      const published = listings.filter(post => post.live);
-      const inquiries = own ? db.chats.filter(chat =>
-        chat.context.startsWith("listing:") &&
-        chat.participants.some(person => actorOwner(person) === user.id)) : [];
-      return `${own ? "" : button("← Back", "back", "", "link-button")}
+      return `${own ? `<div class="company-settings-row"><details class="me-settings"><summary aria-label="Account settings">${icon("me")} Settings</summary><div>${button("Log out", "logout", "", "secondary wide")}</div></details></div>` : button("← Back", "back", "", "link-button")}
         <section class="card company-overview">
-          <div class="profile-top">${avatar(user)}<div>
-            <h1>${esc(user.org)}</h1><span class="badge">Company employee · Demo verified</span>
-          </div></div>
+          <div class="profile-top">${avatar(user)}<div><h1>${esc(user.org)}</h1><span class="badge">Company · Demo verified</span></div></div>
           <p><strong>${esc(user.headline || "")}</strong></p>
-          <h2>About the company</h2>
-          <p class="preserve">${esc(user.bio || "No company introduction yet.")}</p>
-          <h2 class="sr-only">Company contact</h2>
-          <div class="company-contact">
-            <div>${icon("me")}<span><strong>${esc(fullName(user))}</strong><small>${esc(user.major || "Contact person")}</small></span></div>
-            <div>${icon("pin")}<span>${esc(user.location || "Not added")}</span></div>
-          </div>
-          ${own ? button("Edit company profile", "edit-profile", "", "wide")
-            : button("Message company", "message-actor", person, "wide")}
+          <h2>About the company</h2><p class="preserve">${esc(user.bio || "No company introduction yet.")}</p>
+          <div class="company-contact"><div>${icon("me")}<span><strong>${esc(fullName(user))}</strong><small>${esc(user.major || "Contact person")}</small></span></div>
+            <div>${icon("pin")}<span>${esc(user.location || "Not added")}</span></div></div>
+          ${own ? button("Edit company profile", "edit-profile", "", "wide") : button("Message company", "message-actor", person, "wide")}
         </section>
-        ${own ? `<section class="card stack company-management">
-          <h2>Internship management</h2>
-          <div class="company-stat-grid">
-            <div><strong>${published.filter(post => !post.closed).length}</strong>Open</div>
-            <div><strong>${published.filter(post => post.closed).length}</strong>Closed</div>
-            <div><strong>${listings.filter(post => post.review === "pending").length}</strong>Pending</div>
-          </div>
-          ${button("Manage listings →", "workspace", "", "wide")}
-        </section>
-        <div class="company-links">${xb(`${icon("chat")} Messages & inquiries <span>›</span>`, "navigate", "inbox", "secondary wide")}
-          ${xb("Favorites", "navigate", "favorites", "secondary wide")}
-          ${button("Log out", "logout", "", "secondary wide")}</div>
-        <details class="card company-inquiries">
-          <summary>Internship inquiries (${inquiries.length})</summary>
-          ${inquiries.map(chatRow).join("") || '<p class="muted">No internship inquiries yet. Questions sent from a listing will appear here.</p>'}
-        </details>` : ""}
-        <h2>Published internships (${published.length})</h2>
-        <div class="company-listings">${published.map(post => xb(
-          `<strong>${esc(post.live.job)}</strong><span>${esc(post.live.location)} · ${post.live.duration} weeks</span><b>${post.closed ? "Closed" : "Published"}</b>`,
-          "job-open", post.id, "company-listing"
-        )).join("") || '<p class="muted">No published internships yet.</p>'}</div>`;
+        ${own ? `<section class="card company-management"><h2>Internship management</h2><div class="company-stat-grid">
+          ${["Open", "Closed", "Pending"].map(state => `<div><strong>${listings.filter(post => companyListingState(post) === state).length}</strong>${state}</div>`).join("")}
+          </div>${xb("Manage listings →", "navigate", "internships", "wide")}</section>
+          <div class="company-links">${xb(`${icon("question")} Inquiries <span>›</span>`, "navigate", "company-inquiries", "secondary wide")}</div>
+          ${profileActivity()}` : postGrid(listings.filter(post => post.live))}`;
     }
 
     if (own && user.kind === "participant") return renderStudentMe(user);
@@ -1500,7 +1560,7 @@
         ], "invalid")}
         <div class="stack">
           ${company ? `
-            <button name="method" value="employee">Submit valid company employee proof</button>
+            <button name="method" value="employee">Submit valid company registration proof</button>
             <button name="method" value="other">Submit other identity verification documents</button>
           ` : `
             <button name="method" value="id">Submit valid student ID</button>
@@ -1570,7 +1630,6 @@
           internship by posting a review. The App will add this internship to your
           profile. You can always edit at “Me”.
         </p>
-        </p>
         <p class="warning">
           Verification and extraction are simulated. No documents are uploaded.
           A notification records the sample decision.
@@ -1604,7 +1663,7 @@
   const emptyJobFilters = () => ({
     employer: [], position: [], location: [], arrangement: [],
     duration: [], field: [], skills: [], treatments: [], keywords: [],
-    minPay: 0, maxPay: 300, rating: "", includeOpenField: false
+    minPay: 0, maxPay: 100000, rating: "", includeOpenField: false
   });
 
   let jobFilters = emptyJobFilters();
@@ -1612,6 +1671,7 @@
   let jobQuery = "";
   let jobMode = "search";
   let searchedJobs = false;
+  let jobFilterOwner = null;
 
   function allJobs() {
     return db.posts.filter(post => post.type === "official" && post.live)
@@ -1680,9 +1740,13 @@
         post.jobMeta.payMin > Number(applied.maxPay)) return false;
 
     if (applied.rating !== "") {
-      const [min, max] = applied.rating.split("-").map(Number);
       const rating = overall(post);
-      if (rating < min || rating > max) return false;
+      if (applied.rating === ">4.5") {
+        if (rating <= 4.5) return false;
+      } else {
+        const [min, max] = applied.rating.split("-").map(Number);
+        if (rating < min || rating > max) return false;
+      }
     }
     return true;
   }
@@ -1714,7 +1778,7 @@
       <p class="ic-job-company">${esc(data.company)} ${post.closed ? '<span class="badge">Closed</span>' : ""}</p>
       <div class="ic-job-tags">
         <span>${icon("pin")}${esc(data.location)}</span><span>${icon("computer")}${esc(meta.arrangement)}</span>
-        <span>${icon("calendar")}${data.duration} weeks</span><span>${icon("clock")}HK$${meta.payMin}–${meta.payMax}/hr</span>
+        <span>${icon("calendar")}${data.duration} weeks</span><span>${icon("clock")}HK$${meta.payMin.toLocaleString("en-HK")}–${meta.payMax.toLocaleString("en-HK")}/month</span>
       </div>
       ${data.deadline ? `<p class="muted">Apply by ${esc(data.deadline)}</p>` : ""}
       <div class="ic-job-compare">${xb(`${icon("compare")} ${compared ? "Added to comparison" : "Compare"}`, "compare-toggle", post.id)}</div>
@@ -1741,7 +1805,7 @@
 
     return `<div class="ic-sticky row between">
         <h1>Find your next internship</h1>
-        ${xb("Comparisons", "navigate", "comparisons")}
+        ${provider() ? xb("Comparisons", "navigate", "comparisons") : ""}
       </div>
       <p class="ic-subtle internship-demo-note">Explore opportunities. All listings are fictional demos.</p>
       <div class="feed-tabs">
@@ -1749,13 +1813,19 @@
         ${xb("Wishlisted", "job-mode", "wishlisted", "", `aria-pressed="${jobMode === "wishlisted"}"`)}
       </div>
 
+      ${provider() ? "" : `<form data-form="x-job-search" class="student-job-search" role="search">
+        ${field("Search internships", "query", jobQuery, "search", false, 'placeholder="Roles, companies, keywords…"')}
+        <button type="submit" aria-label="Search internships">${icon("search")}</button>
+        ${xb("Comparisons", "navigate", "comparisons", "secondary")}
+        ${xb(`${icon("filter")} Filters`, "filters", "", "secondary")}
+      </form>`}
       ${jobMode === "search" ? `
-        <form data-form="x-job-search">
+        ${provider() ? `        <form data-form="x-job-search">
           ${field("Search internships", "query", jobQuery, "text", false, 'placeholder="Search roles, companies or keywords"')}
           <div class="row"><button>Search</button>
             ${xb(`${icon("filter")} Filters`, "filters")}
           </div>
-        </form>
+        </form>` : ""}
         ${searchedJobs ? `
           <h2>Search results (${results.length})</h2>
           ${results.map(jobRow).join("") || '<p class="empty">No matches. Try removing filters.</p>'}
@@ -1776,8 +1846,55 @@
       `}`;
   };
 
+  function companyListingState(post) {
+    return post.review === "pending" ? "Pending" : !post.live ? "Drafts" : post.closed ? "Closed" : "Open";
+  }
+
+  function companyListings() {
+    return db.posts.filter(post => post.type === "official" && post.owner === currentUserId);
+  }
+
+  function companyListingCard(post) {
+    const data = post.draft || post.live;
+    const state = companyListingState(post);
+    return `<article class="card company-managed-role"><div class="row between"><h3>${esc(data.job || "Untitled position")}</h3>
+      <span class="badge listing-state state-${state.toLowerCase()}">${state === "Drafts" ? "Draft" : state}</span></div>
+      <p class="muted">${esc(data.location)} · ${esc(data.duration)} weeks</p>
+      ${post.reason ? `<p class="warning">${esc(post.reason)}</p>` : ""}
+      ${post.review === "pending" ? '<p class="muted">Awaiting platform approval. The current published version remains unchanged.</p>' : post.draft ? '<p class="muted">Saved changes are not public. Submit them for platform approval.</p>' : ""}
+      <div class="row">${post.live ? xb("View published", "job-open", post.id) : ""}
+        ${post.review !== "pending" ? button(post.draft ? "Edit draft" : "Edit listing", "edit-listing", post.id, "secondary") : ""}
+        ${post.draft && post.review !== "pending" ? button("Submit for review", "submit-listing", post.id, "secondary") : ""}
+        ${post.live ? button(post.closed ? "Reopen applications" : "Close applications", "toggle-listing", post.id, "secondary") : ""}
+      </div></article>`;
+  }
+
+  pages.manage = () => {
+    if (!provider()) return deniedPage();
+    const jobs = companyListings().filter(post => matchesJob(prepareJob({ ...post, live: post.draft || post.live, jobMeta: post.jobMeta ? clone(post.jobMeta) : undefined })));
+    return `${heading("Manage company internships", me().org, false)}
+      <form data-form="x-job-search" class="company-manage-search" role="search">
+        ${field("Search company internships", "query", jobQuery, "search", false, 'placeholder="Roles, keywords…"')}
+        <button type="submit" aria-label="Search company internships">${icon("search")}</button>${xb(`${icon("filter")} Filters`, "filters")}
+      </form>
+      ${button("＋ Create internship listing", "new-listing", "", "wide")}
+      <p class="muted">Create and edit your own listings directly. Every new listing or update needs platform approval before publication.</p>
+      ${["Open", "Closed", "Pending", "Drafts"].map(state => {
+        const group = jobs.filter(post => companyListingState(post) === state);
+        if (state === "Drafts" && !group.length) return "";
+        return `<details class="company-role-group" open><summary>${state} <span>${group.length}</span></summary>
+          ${group.map(companyListingCard).join("") || '<p class="muted">No matching listings.</p>'}</details>`;
+      }).join("")}`;
+  };
+  const participantInternships = pages.internships;
+  pages.internships = () => provider() ? pages.manage() : participantInternships();
+  pages.workspace = pages.manage;
+  pages["company-inquiries"] = () => !provider() ? deniedPage() : `${heading("Inquiries")}
+    ${db.chats.filter(chat => chat.context.startsWith("listing:") && chat.participants.some(person => actorOwner(person) === currentUserId)).map(chatRow).join("") || '<p class="empty">No internship inquiries yet.</p>'}`;
+
   function filterSuggestions(key) {
-    return [...new Set(allJobs().flatMap(post => jobValues(post, key)))].sort();
+    const jobs = provider() ? companyListings().map(post => prepareJob({ ...post, live: post.draft || post.live, jobMeta: post.jobMeta ? clone(post.jobMeta) : undefined })) : allJobs();
+    return [...new Set(jobs.flatMap(post => jobValues(post, key)))].sort();
   }
 
   function filterTags(key) {
@@ -1795,13 +1912,13 @@
             <h2>Filters</h2>${xb("×", "close-modal", "", "secondary", 'aria-label="Close filters"')}
           </div>
           <div class="row">
-            ${xb("Apply AI-recommended filters", "filter-ai")}
+            ${provider() ? "" : xb("Apply AI-recommended filters", "filter-ai")}
             ${xb("Clear all", "filter-clear-all")}
           </div>
-          <p class="ic-subtle">Demo presets—not actual AI predictions.</p>
+          ${provider() ? "" : '<p class="ic-subtle">Demo presets—not actual AI predictions.</p>'}
         </div>
 
-        ${Object.entries(FILTER_NAMES).map(([key, label]) => `
+        ${Object.entries(FILTER_NAMES).filter(([key]) => !provider() || key !== "employer").map(([key, label]) => `
           <section class="ic-filter-group">
             <label for="filter-${key}">${label}</label>
             <div class="ic-filter-input">
@@ -1833,19 +1950,19 @@
           </section>
         `).join("")}
 
-        <h3>Pay range · HKD/hour</h3>
-        <p class="muted">All sample listings use the same hourly currency/unit.</p>
+        <h3>Pay range · HKD/month</h3>
+        <p class="muted">Monthly pay in Hong Kong dollars.</p>
         <div class="ic-range">
           <label>Lower: <output id="minPayOutput">${draftFilters.minPay}</output>
-            <input name="minPay" type="range" min="0" max="300" step="5" value="${draftFilters.minPay}">
+            <input name="minPay" type="range" min="0" max="100000" step="100" value="${draftFilters.minPay}">
           </label>
           <label>Upper: <output id="maxPayOutput">${draftFilters.maxPay}</output>
-            <input name="maxPay" type="range" min="0" max="300" step="5" value="${draftFilters.maxPay}">
+            <input name="maxPay" type="range" min="0" max="100000" step="100" value="${draftFilters.maxPay}">
           </label>
         </div>
         ${selectField("Ratings", "rating", [
           ["", "Any rating"], ["0-1", "0–1 stars"], ["1-2", "1–2 stars"],
-          ["2-3", "2–3 stars"], ["3-4", "3–4 stars"], ["4-5", "4–5 stars"]
+          ["2-3", "2–3 stars"], ["3-4", "3–4 stars"], ["4-4.5", "4–4.5 stars"], [">4.5", ">4.5 stars"]
         ], draftFilters.rating)}
         <p class="ic-subtle">
           Keywords are OR-matched within each category and AND-matched between categories.
@@ -2057,6 +2174,7 @@
   };
 
   function engagementJobButtons(post) {
+    if (provider()) return post.owner === currentUserId ? "" : button("Private inquiry", "post-message", post.id);
     const wished = (db.wishlists[currentUserId] || []).includes(post.id);
     const compared = (db.comparisons[currentUserId] || []).includes(post.id);
     return `<div class="ic-actions">
@@ -2146,9 +2264,9 @@
       </div>
   
       <div class="ic-ad-copy">
-        <span class="ic-ad-brand">${icon("ship")} InternCruise</span>
-        <h1>Your next<br>journey starts here.</h1>
-        <p>Explore. Learn. Set sail.</p>
+        <span class="ic-ad-brand">Moss &amp; Mug</span>
+        <h1>A little pause.<br>A brighter day.</h1>
+        <p>Meet your new everyday coffee ritual.</p>
       </div>
   
       <div class="ic-ad-bottom">
@@ -2162,11 +2280,11 @@
         ${xb("Skip", "ad-skip", "", "wide", 'id="rewardAdSkip"')}
   
         <p class="ic-ad-disclaimer">
-          skip is only for ease of demonstration; actual ads will be 30 seconds
+          Skip is only for ease of demonstration; actual ads will be 30 seconds.
         </p>
   
         <p class="ic-ad-demo-note">
-          Browser-generated demo video · No real advertiser
+          Fictional third-party coffee advertisement · No real offer
         </p>
       </div>
     </section>`;
@@ -2225,41 +2343,29 @@
         context.fill();
       }
   
-      // Softly cruising ship.
+      // Floating coffee cup for the fictional third-party advertiser.
       context.save();
-      context.translate(
-        360 + Math.sin(time / 3) * 35,
-        660 + Math.sin(time * 1.4) * 6
-      );
-      context.rotate(Math.sin(time) * 0.015);
-      context.lineJoin = "round";
-      context.lineCap = "round";
-      context.lineWidth = 7;
+      context.translate(340, 660 + Math.sin(time * 1.4) * 6);
+      context.lineWidth = 8;
       context.strokeStyle = "#086b58";
       context.fillStyle = "#fcfffa";
-  
       context.beginPath();
-      context.moveTo(-170, 0);
-      context.lineTo(180, 0);
-      context.quadraticCurveTo(140, 83, 98, 83);
-      context.lineTo(-106, 83);
-      context.quadraticCurveTo(-145, 75, -170, 0);
-      context.closePath();
-      context.fill();
+      context.roundRect(-95, -100, 190, 150, [8, 8, 50, 50]);
+      context.fill(); context.stroke();
+      context.beginPath();
+      context.arc(108, -40, 36, -Math.PI / 2, Math.PI / 2);
       context.stroke();
-  
-      context.fillRect(-110, -62, 218, 62);
-      context.strokeRect(-110, -62, 218, 62);
-      context.fillRect(-55, -112, 106, 50);
-      context.strokeRect(-55, -112, 106, 50);
-  
-      context.fillStyle = "#b5dfce";
-      for (let x = -75; x <= 75; x += 50) {
+      context.beginPath();
+      context.ellipse(0, -100, 95, 15, 0, 0, Math.PI * 2);
+      context.fillStyle = "#a77c57";
+      context.fill(); context.stroke();
+      context.lineCap = "round";
+      for (let x = -45; x <= 45; x += 45) {
         context.beginPath();
-        context.arc(x, -30, 9, 0, Math.PI * 2);
-        context.fill();
+        context.moveTo(x, -140);
+        context.bezierCurveTo(x - 25, -165, x + 25, -185, x + Math.sin(time + x) * 8, -210);
+        context.stroke();
       }
-  
       context.restore();
   
       if (!reducedMotion) frame = requestAnimationFrame(draw);
@@ -2417,7 +2523,7 @@
       Existing conversations do not consume a trial.
     </p>
   
-    ${messagingTrialBalance() ? `
+    ${!me()?.premiumDemo && messagingTrialBalance() ? `
       ${db.users.filter(user =>
         user.verified && user.id !== currentUserId
       ).map(user => `
@@ -2523,8 +2629,15 @@
     const id = buttonElement.dataset.action === "like-forum"
       ? `forum||${buttonElement.dataset.id}` : buttonElement.dataset.id || "";
 
+    if (name === "premium-demo") {
+      if (!me() || provider()) return;
+      me().premiumDemo = id === "premium";
+      persist();
+      return render();
+    }
+
     if (name === "watch-ad") {
-      if (!me()?.verified || !await mayLeave()) return;
+      if (!me()?.verified || provider() || !await mayLeave()) return;
     
       rewardAdSession = {
         owner: currentUserId,
@@ -2552,14 +2665,16 @@
     }
     
     if (name === "trial-chat") {
+      if (provider()) return;
       if (trialChatBusy || !me()?.verified) return;
-    
-      if (!messagingTrialBalance()) {
-        return tell("Watch a demo advertisement to earn messaging trials.");
-      }
     
       const recipient = getUser(id);
       if (!recipient?.verified || id === currentUserId) return;
+      if (me().premiumDemo) return openChat(id);
+
+      if (!messagingTrialBalance()) {
+        return tell("Watch a demo advertisement to earn messaging trials.");
+      }
     
       const owner = currentUserId;
       const existing = db.chats.find(chat =>
@@ -2770,6 +2885,7 @@
     }
 
     if (name === "wishlist") {
+      if (provider()) return;
       toggleAccountList("wishlists", id);
       redrawPreservingInputs();
       return;
@@ -2778,6 +2894,7 @@
     if (name === "comparison-step") return stepComparison(Number(id));
 
     if (name === "compare-toggle") {
+      if (provider()) return;
       toggleAccountList("comparisons", id);
       if (route.name === "comparisons") return refreshComparison();
       redrawPreservingInputs();
@@ -2828,6 +2945,7 @@
     }
 
     if (name === "filter-ai") {
+      if (provider()) return;
       draftFilters = emptyJobFilters();
       draftFilters.field = me().major ? [me().major] : [];
       draftFilters.skills = [...me().skills];
