@@ -7,7 +7,7 @@ let html=c.pages.home();
 const titles=['Internship information list','The Community','InternCruise Premium','Advertisements for rewards'];
 for(let i=1;i<titles.length;i++)assert.ok(html.indexOf(titles[i-1])<html.indexOf(titles[i]));
 assert.ok(html.includes('EXPLORE POSTS'));assert.equal((html.match(/student-home-tile/g)||[]).length,4);
-html=c.pages.premium();assert.ok(html.includes('Price to be confirmed'));assert.ok(html.includes('No payment'));assert.ok(!html.includes('Open feature'));
+html=c.pages.premium();assert.ok(html.includes('Price to be confirmed'));assert.ok(html.includes('No payment'));assert.ok(!html.includes('Open feature'));assert.ok(html.includes('5 messages to companies'));assert.ok(html.includes('AI résumé matching'));
 user.premiumDemo=true;html=c.pages.premium();assert.equal((html.match(/Open feature/g)||[]).length,3);assert.ok(html.includes('Switch to free'));assert.ok(vm.runInContext('premiumBadge(me())',c).includes('is-premium'));
 user.kind='provider';assert.equal(c.pages.home(),'PROVIDER HOME');assert.equal(c.pages.premium(),'DENIED');
 Object.assign(c,{name:'premium-demo',id:'premium',persist:()=>{throw Error('provider must not mutate')},render:()=>{}});

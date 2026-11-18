@@ -904,6 +904,24 @@ function listingPreview(data) {
 
 /* ---------------------- Private messages ---------------------- */
 
+// shortcut: quotas use local browser messages; enforce on a server before real accounts launch.
+function companyMessageDay(value = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Hong_Kong", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
+}
+
+function isCompanyMessage(chat, sender) {
+  return getUser(actorOwner(sender))?.kind === "participant" && chat.participants.some(person =>
+    person !== sender && getUser(actorOwner(person))?.kind === "provider");
+}
+
+function sentCompanyMessagesToday(userId, now = new Date()) {
+  const day = companyMessageDay(now);
+  return db.chats.reduce((total, chat) => total + chat.messages.filter(message =>
+    actorOwner(message.sender) === userId && isCompanyMessage(chat, message.sender) &&
+    companyMessageDay(message.created) === day && !message.rewardTrialUsed && !message.premiumMessage
+  ).length, 0);
+}
+
 async function openChat(other, context = "direct", label = "Direct message", sender = currentUserId) {
   if (!me() || actorOwner(other) === currentUserId) return;
   if (!await mayLeave()) return;
@@ -975,6 +993,11 @@ function chatPage() {
         "resolve-chat", chat.id)}
     </div>
 
+    ${isCompanyMessage(chat, mine) ? `<section class="company-message-allowance" aria-label="Company messaging allowance">
+      ${me().premiumDemo ? '<p>Premium · Company messaging included. No daily limit in this demo.</p>' : `<p>${Math.max(0, 5 - sentCompanyMessagesToday(currentUserId))} of 5 free company messages left today · ${Math.max(0, Number(db.messagingTrials?.[currentUserId]) || 0)} reward messages available.</p>
+      <p class="muted">Resets at midnight Hong Kong time. Messages to students/alumni do not use this allowance. After 5 free messages, each extra message uses 1 reward credit, or requires Premium.</p>
+      ${button("View Premium plans", "x-navigate", "premium")}`}
+    </section>` : ""}
     <div id="chatStream" class="chat-stream" role="log" aria-label="Conversation">
       ${chat.messages.length ? chat.messages.map((message) => `
         <div class="chat-bubble ${message.sender === mine ? "mine" : ""}">
@@ -1668,8 +1691,16 @@ document.addEventListener("submit", async (event) => {
     if (!sender || chat.resolved || !text("text")) {
       return fail("Write a message in an open conversation.");
     }
+    const companyMessage = isCompanyMessage(chat, sender);
+    const premiumMessage = companyMessage && me().premiumDemo === true;
+    const useReward = companyMessage && !premiumMessage && sentCompanyMessagesToday(currentUserId) >= 5;
+    if (useReward && !(Number(db.messagingTrials?.[currentUserId]) > 0)) {
+      return fail("You have used today's 5 free messages to companies. Upgrade in Premium Center or watch an ad for extra messages. Your message has not been sent.");
+    }
+    if (useReward) db.messagingTrials[currentUserId] = Math.max(0, Number(db.messagingTrials[currentUserId]) - 1);
     chat.messages.push({
-      id: uid(), sender, text: text("text"), created: timestamp()
+      id: uid(), sender, text: text("text"), created: timestamp(),
+      rewardTrialUsed: useReward, premiumMessage
     });
 
     const other = chat.participants.find((person) => person !== sender);

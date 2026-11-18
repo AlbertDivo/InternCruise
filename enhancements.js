@@ -474,7 +474,7 @@
         ? "internships"
         : ["posts", "create", "experience", "post"].includes(page.name)
           ? "posts"
-          : ["profile", "edit-profile", "favorites", "profile-item", "resume", "career-profile", "full-profile", "premium", "workspace", "listing"].includes(page.name)
+          : ["profile", "edit-profile", "favorites", "profile-item", "resume", "career-profile", "full-profile", "premium", "resume-matching", "resume-polish", "company-people", "workspace", "listing"].includes(page.name)
             ? "profile" : "home";
   }
 
@@ -482,11 +482,11 @@
 
   render = function () {
     migrate();
-    if (provider() && me()?.verified && ["home", "reward-ad", "premium", "community", "comparisons", "trial-people"].includes(route.name)) {
+    if (provider() && me()?.verified && ["home", "reward-ad", "premium", "community", "comparisons", "trial-people", "company-people", "resume-matching", "resume-polish"].includes(route.name)) {
       route = { name: "internships" };
     }
-    if (me()?.premiumDemo && route.name === "trial-people") {
-      route = { name: "people" };
+    if (!provider() && route.name === "trial-people") {
+      route = { name: "company-people" };
     }
     if (currentUserId !== jobFilterOwner) {
       jobFilters = emptyJobFilters(); draftFilters = emptyJobFilters(); jobQuery = ""; searchedJobs = false; jobMode = "search";
@@ -719,10 +719,10 @@
   
       ${!me()?.premiumDemo && messagingTrialBalance() ? `
         <p class="muted">
-          ${messagingTrialBalance()} free private messaging
+          ${messagingTrialBalance()} reward company messaging
           ${messagingTrialBalance() === 1 ? "trial" : "trials"} available.
         </p>
-        ${xb("Use a messaging trial", "navigate", "trial-people", "link-button")}
+        ${xb("Message a company", "navigate", "trial-people", "link-button")}
       ` : ""}
   
       <p class="ic-subtle">Demo rewards only · No real advertisements or purchases.</p>
@@ -737,10 +737,10 @@
       ${[["Internship information list", "Find your next role", "internships", "jobs"],
         ["The Community", "Stories, questions & advice", "community", "forum"],
         ["InternCruise Premium", "Explore membership", "premium", "star"],
-        ["Advertisements for rewards", "Watch ads · Earn messaging trials", "reward", "heart"]].map(([title, subtitle, target, image]) =>
+        ["Advertisements for rewards", "Watch ads · Earn company messages", "reward", "heart"]].map(([title, subtitle, target, image]) =>
         xb(`${icon(image)}<strong>${title}</strong><span>${subtitle}</span>`, target === "reward" ? "watch-ad" : "navigate", target === "reward" ? "" : target, "student-home-tile")).join("")}
     </section>
-    ${!me()?.premiumDemo && messagingTrialBalance() ? `<p class="student-reward-balance">${messagingTrialBalance()} free messaging trials ${xb("Use a trial →", "navigate", "trial-people", "link-button")}</p>` : ""}
+    ${!me()?.premiumDemo && messagingTrialBalance() ? `<p class="student-reward-balance">${messagingTrialBalance()} reward company messages ${xb("Message a company →", "navigate", "trial-people", "link-button")}</p>` : ""}
     ${homeExplorePosts()}`;
 
   pages.community = () => provider() ? missingPage() : `${heading("The Community", "Learn from experience. Ask your next question.")}
@@ -759,20 +759,58 @@
       <section class="card premium-overview">${premiumBadge(me())}
         <h2>${premium ? "Your Premium features" : "Choose your membership"}</h2>
         <p>${premium ? "Explore the feature previews below." : "Compare the free account and proposed Premium plan."}</p>
-        <p class="muted">Demo only · No payment or recurring subscription. Prices and final benefits are to be confirmed.</p>
+        <p class="muted">Demo only · No payment or recurring subscription. Price to be confirmed.</p>
       </section>
       ${premium ? `<div class="premium-feature-list">
-        ${[["Personalized internships", "Open the existing profile-based recommendations.", "internships"],
-          ["Compare opportunities", "Compare the roles you have selected.", "comparisons"],
-          ["Private messaging", "Start a conversation in this local demo.", "people"]].map(([title, text, target]) => `<section class="card"><h2>${title}</h2><p>${text}</p>${xb("Open feature →", "navigate", target, "secondary")}</section>`).join("")}
-        <p class="muted">These previews reuse existing demo tools. Free accounts retain their current access; no Premium-only service is connected.</p>
+        ${[["Private messaging with companies", "Contact employers beyond the free daily allowance. Messaging students and alumni does not require Premium.", "company-people"],
+          ["AI résumé matching", "Adapt your résumé to a selected role, its requirements and company values. Local simulation.", "resume-matching"],
+          ["Résumé polishing", "Improve résumé language and formatting. Local simulation.", "resume-polish"]].map(([title, text, target]) => `<section class="card"><h2>${title}</h2><p>${text}</p>${xb("Open feature →", "navigate", target, "secondary")}</section>`).join("")}
+        <p class="muted">Premium company messaging has no daily limit in this demo. Résumé previews use local rules; no real AI service is connected.</p>
         ${xb("Switch to free account · Demo", "premium-demo", "free", "secondary wide")}
       </div>` : `<section class="card premium-plan"><h2>Free account</h2><p class="premium-price">Free</p>
-        <p>Browse internships, read posts, join discussions and save favorites.</p><span class="badge">Current plan</span></section>
+        <p>Browse, compare and save opportunities. Send 5 messages to companies per day; messages to students/alumni do not need Premium.</p><span class="badge">Current plan</span></section>
         <section class="card premium-plan"><h2>InternCruise Premium</h2><p class="premium-price">Price to be confirmed</p>
-        <p>Proposed areas: personalized discovery, career planning tools and messaging benefits. Final entitlements are not yet defined.</p>
+        <p>Includes company messaging beyond the free daily allowance, AI résumé matching for target internships, and Résumé polishing (language and format). Price to be confirmed.</p>
         ${xb("Try Premium preview · Demo", "premium-demo", "premium", "wide")}</section>`}`;
   };
+
+  const resumePreviews = {};
+
+  function resumeDemoResult(source, job) {
+    const paragraphs = source.trim().split(/\n+/).map(line => line.trim().replace(/\s+/g, " "));
+    if (!job) return paragraphs.map(line => line.replace(/^[•*]\s*/, "- ").replace(/\bi\b/g, "I")).join("\n\n");
+    const keywords = `${job.live.requirements || ""} ${(job.jobMeta?.skills || []).join(" ")}`.toLowerCase().match(/[a-z][a-z+#-]{2,}/g) || [];
+    const score = line => [...new Set(keywords)].filter(word => line.toLowerCase().includes(word)).length;
+    const ranked = paragraphs.map((line, index) => ({ line, index, score: score(line) })).sort((a, b) => b.score - a.score || a.index - b.index);
+    return `Application focus: ${job.live.job} at ${job.live.company}\n\n${ranked.map(item => item.line).join("\n\n")}`;
+  }
+
+  function premiumResumePage(mode) {
+    if (!me()?.verified || provider()) return deniedPage();
+    const matching = mode === "matching";
+    const title = matching ? "AI résumé matching" : "Résumé polishing";
+    if (!me().premiumDemo) return `${heading(title)}<section class="card"><p>This is a Premium feature.</p>${xb("View Premium plans", "navigate", "premium", "wide")}</section>`;
+    const saved = resumePreviews[`${currentUserId}:${mode}`] || {};
+    const jobs = allJobs().filter(post => !post.closed);
+    return `${heading(title, matching ? "Adapt your résumé to a target internship." : "Improve language and formatting.")}
+      <p class="warning">Local simulation · No AI service is connected. This demo uses simple text rules, not AI analysis. Pasted text stays in this tab and is not saved to browser storage.</p>
+      <form data-form="x-premium-resume" data-mode="${mode}" data-dirty>
+        ${matching ? selectField("Target internship", "job", jobs.map(post => [post.id, `${post.live.job} · ${post.live.company}`]), saved.job || jobs[0]?.id) : ""}
+        ${area("Paste your résumé text", "resume", saved.source || "", true, 6000)}
+        ${matching ? area("Company values or culture (optional — use verified information)", "values", saved.values || "", false, 1000) : ""}
+        <p class="muted">${matching ? "The demo prioritizes existing paragraphs that share terms with the job requirements. It does not add skills, experience or achievements." : "The demo normalizes spacing, bullet markers and the pronoun I. A connected AI service would be needed for full grammar and style rewriting."}</p>
+        <button class="wide">${matching ? "Preview tailored résumé · Demo" : "Preview polishing · Demo"}</button>
+      </form>
+      ${saved.result ? `<section class="card premium-resume-result" aria-live="polite"><h2>Suggested version · Demo</h2>
+        <label>Résumé preview<textarea rows="10" readonly>${esc(saved.result)}</textarea></label>
+        ${matching ? `<h3>Job requirements</h3><p class="preserve">${esc(saved.requirements)}</p>
+          <h3>Company context</h3><p class="preserve">${esc(saved.company)}</p>
+          ${saved.values ? `<h3>Values / culture alignment to review</h3><p class="preserve">${esc(saved.values)}</p><p>Add a specific example from your real experience that supports these values. Do not claim experience you do not have.</p>` : ""}` : ""}
+        <p class="muted">Review before using. Your original résumé file and profile are unchanged. Select the preview text to copy it.</p></section>` : ""}`;
+  }
+
+  pages["resume-matching"] = () => premiumResumePage("matching");
+  pages["resume-polish"] = () => premiumResumePage("polish");
 
   // Preserve the previous feed, but move it to Posts.
   let postsMode = "recommended";
@@ -855,8 +893,8 @@
   
     ${!provider() && !me()?.premiumDemo && messagingTrialBalance() ? `
       <div class="ic-inbox-reward">
-        <span>${messagingTrialBalance()} free messaging trials</span>
-        ${xb("Use a trial", "navigate", "trial-people", "link-button")}
+        <span>${messagingTrialBalance()} reward company messages</span>
+        ${xb("Message a company", "navigate", "trial-people", "link-button")}
       </div>
     ` : ""}`;
   }
@@ -867,7 +905,7 @@
   pages.notifications = pages.updates;
 
   pages.people = () => `${heading("Start a chat")}
-    <p class="muted">Choose a demo user. Messages stay in this browser.</p>
+    <p class="muted">${provider() ? "Choose a demo user. Reply to student inquiries without a membership." : "Choose a demo user. Messages to students/alumni do not require Premium. Free accounts can send 5 company messages per day."} Messages stay in this browser.</p>
     ${db.users.filter(user => user.verified && user.id !== currentUserId).map(user => `
       <article class="card">
         <div class="row">${avatar(user)}
@@ -877,6 +915,9 @@
         ${xb("Message", "start-chat", user.id)}
       </article>
     `).join("")}`;
+  pages["company-people"] = () => provider() ? deniedPage() : `${heading("Message a company")}
+    <p class="muted">${me().premiumDemo ? "Premium company messaging · No daily limit in this demo." : `${Math.max(0, 5 - sentCompanyMessagesToday(currentUserId))} of 5 free company messages left today. Then use reward credits or upgrade to Premium. Resets at midnight Hong Kong time.`}</p>
+    ${db.users.filter(user => user.verified && user.kind === "provider").map(user => `<article class="card"><div class="row">${avatar(user)}<strong>${esc(user.org)}</strong></div>${xb("Message company", "start-chat", user.id)}</article>`).join("") || '<p class="empty">No companies available.</p>'}`;
   let forumQuery = "";
   let replyingTo = null;
   let selectedTags = [];
@@ -2241,7 +2282,6 @@
   let rewardAdSession = null;
   let rewardAdTimer = null;
   let stopRewardAdPreview = null;
-  let trialChatBusy = false;
   
   pages["reward-ad"] = () => {
     const session = rewardAdSession;
@@ -2444,7 +2484,7 @@
     db.messagingTrials[currentUserId] = messagingTrialBalance() + 3;
   
     selfNotice(
-      "Congratulations! You earned 3 free private messaging trials. Use it anytime.",
+      "Congratulations! You earned 3 reward company messages. Use them after your daily free allowance.",
       { name: "trial-people" }
     );
   
@@ -2455,16 +2495,16 @@
       <div class="ic-reward-success">${icon("ship")}</div>
   
       <p class="ic-reward-message">
-        Congratulations! You earned 3 free private messaging trials. Use it anytime.
+        Congratulations! You earned 3 reward company messages. Use them after your daily free allowance.
       </p>
   
       <p class="muted">
-        Available balance: ${messagingTrialBalance()} trials.
+        Available balance: ${messagingTrialBalance()} extra company messages.
         Demo rewards are saved in this browser.
       </p>
   
       <div class="stack">
-        ${xb("Use a messaging trial", "ad-use-trial", "", "wide")}
+        ${xb("Message a company", "ad-use-trial", "", "wide")}
         ${xb("Back to Home", "ad-exit", "", "secondary wide")}
       </div>
     `, "ic-phone-overlay");
@@ -2516,32 +2556,7 @@
     if (rewardAdSession) rewardAdSession.lastTick = performance.now();
   });
   
-  pages["trial-people"] = () => `${heading("Use a messaging trial")}
-    <p class="muted">
-      ${messagingTrialBalance()} free trials available.
-      One trial opens one new direct demo conversation.
-      Existing conversations do not consume a trial.
-    </p>
-  
-    ${!me()?.premiumDemo && messagingTrialBalance() ? `
-      ${db.users.filter(user =>
-        user.verified && user.id !== currentUserId
-      ).map(user => `
-        <article class="card">
-          <div class="row">
-            ${avatar(user)}
-            <div class="grow">
-              <strong>${esc(actorName(user.id))}</strong>
-              <p class="muted">${esc(user.org)}</p>
-            </div>
-          </div>
-          ${xb("Start chat with a trial", "trial-chat", user.id)}
-        </article>
-      `).join("")}
-    ` : `
-      <p class="empty">Watch a demo advertisement to earn more trials.</p>
-      ${xb("Back to Home", "navigate", "home", "wide")}
-    `}`;
+  pages["trial-people"] = pages["company-people"];
   function toggleAccountList(key, id) {
     db[key][currentUserId] ??= [];
     const values = db[key][currentUserId];
@@ -2665,49 +2680,8 @@
     }
     
     if (name === "trial-chat") {
-      if (provider()) return;
-      if (trialChatBusy || !me()?.verified) return;
-    
-      const recipient = getUser(id);
-      if (!recipient?.verified || id === currentUserId) return;
-      if (me().premiumDemo) return openChat(id);
-
-      if (!messagingTrialBalance()) {
-        return tell("Watch a demo advertisement to earn messaging trials.");
-      }
-    
-      const owner = currentUserId;
-      const existing = db.chats.find(chat =>
-        chat.context === "direct" &&
-        chat.participants.includes(owner) &&
-        chat.participants.includes(id)
-      );
-    
-      trialChatBusy = true;
-    
-      try {
-        await openChat(id);
-    
-        const opened = route.name === "chat" ? getChat(route.id) : null;
-        const correctChat = opened?.context === "direct" &&
-          opened.participants.includes(owner) &&
-          opened.participants.includes(id);
-    
-        if (currentUserId !== owner || !correctChat) return;
-    
-        if (existing) {
-          tell("Opened your existing conversation. No trial was used.");
-        } else {
-          db.messagingTrials ??= {};
-          db.messagingTrials[owner] = Math.max(0, messagingTrialBalance() - 1);
-          persist();
-          tell(`One demo trial used. ${messagingTrialBalance()} remaining.`);
-        }
-      } finally {
-        trialChatBusy = false;
-      }
-    
-      return;
+      if (provider() || !me()?.verified || !getUser(id)?.verified || id === currentUserId) return;
+      return openChat(id);
     }
     if (name === "me-tab" || name === "me-category") {
       const view = meView();
@@ -3121,6 +3095,23 @@
     const data = new FormData(form);
     const text = key => String(data.get(key) || "").trim();
     const checked = key => data.has(key);
+
+    if (type === "x-premium-resume") {
+      if (!me()?.verified || provider() || !me().premiumDemo) return tell("This is a Premium feature.");
+      const mode = form.dataset.mode;
+      if (!["matching", "polish"].includes(mode)) return;
+      const source = text("resume"), values = text("values");
+      if (!source || source.length > 6000 || values.length > 1000) return tell("Enter résumé text within the displayed limits.");
+      const job = mode === "matching" ? allJobs().find(post => post.id === text("job") && !post.closed) : null;
+      if (mode === "matching" && !job) return tell("Select an available internship.");
+      resumePreviews[`${currentUserId}:${mode}`] = {
+        source, values, job: job?.id, result: resumeDemoResult(source, job),
+        requirements: job?.live.requirements || "Not specified.",
+        company: job ? getUser(job.owner)?.bio || "No company introduction provided." : ""
+      };
+      dirty = false;
+      return render();
+    }
 
     if (type === "x-posts-search") {
       postsQuery = text("query");

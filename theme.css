@@ -745,3 +745,10 @@ form[data-form="x-job-search"] button{height:39px;padding:8px;font-size:.7rem;ba
 .listing-state.state-closed{background:#f9dddd;color:#982d35}
 .listing-state.state-pending{background:#fff0c2;color:#895d0b}
 .listing-state.state-drafts{background:#eceeea;color:#5f6a62}
+
+/* Premium résumé demo previews. */
+.premium-resume-result textarea{width:100%;font-size:.8rem;line-height:1.5;min-height:220px;resize:vertical}
+.premium-resume-result h3{font-size:.85rem;margin-top:16px}
+
+.company-message-allowance{padding:10px 12px;border:1px solid #d2e5d9;background:#e7f2eb;border-radius:10px;margin:12px 0;font-size:.78rem}
+.company-message-allowance p{margin:4px 0}
