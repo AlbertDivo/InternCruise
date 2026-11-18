@@ -752,3 +752,13 @@ form[data-form="x-job-search"] button{height:39px;padding:8px;font-size:.7rem;ba
 
 .company-message-allowance{padding:10px 12px;border:1px solid #d2e5d9;background:#e7f2eb;border-radius:10px;margin:12px 0;font-size:.78rem}
 .company-message-allowance p{margin:4px 0}
+
+/* Mobile Premium plan details. */
+.premium-benefits{padding-left:20px;font-size:.8rem;line-height:1.6}
+.premium-pricing-list{display:grid;gap:12px;margin-bottom:16px}
+.premium-pricing-option{margin:0;border-color:#bfd6cb;background:#f3f8f5}
+.premium-pricing-option .premium-price{font-size:1.5rem;margin:8px 0}
+.premium-pricing-option .premium-price span{font-size:.8rem;font-weight:400}
+.premium-promotion{background:#fff9e9;border-color:#e8d391}
+.premium-promotion h2{font-size:1.1rem}
+.premium-promotion p{font-size:.8rem;line-height:1.5}

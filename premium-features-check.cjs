@@ -64,7 +64,17 @@ async function click(action,id){
  await vm.runInContext('go("resume-matching")',c);assert.ok(node('screen').innerHTML.includes('View Premium plans'));
  await submit('x-premium-resume',{resume:'<script>bad</script>',job:'p-harbour'},'matching');
  assert.ok(!node('screen').innerHTML.includes('Suggested version'));
+ await vm.runInContext('go("premium")',c);
+ assert.ok(node('screen').innerHTML.includes('View Premium details'));
+ assert.ok(!node('screen').innerHTML.includes('data-action="x-premium-demo"'));
+ await click('x-navigate','premium-plans');
+ assert.equal(vm.runInContext('route.name',c),'premium-plans');
+ assert.equal(vm.runInContext('me().premiumDemo',c),false,'viewing plans does not activate Premium');
+ for(const price of ['59.9','149.9','549.9'])assert.ok(node('screen').innerHTML.includes('HK$'+price));
  await click('x-premium-demo','premium');
+ assert.equal(vm.runInContext('route.name',c),'premium');
+ assert.equal(vm.runInContext('me().premiumDemo',c),true);
+ await vm.runInContext('go("resume-matching")',c);
  await submit('x-premium-resume',{resume:'Worked in retail.\nUsed Figma for onboarding.',job:'p-harbour',values:'<script>values</script>'},'matching');
  assert.ok(node('screen').innerHTML.includes('Suggested version'));
  assert.ok(node('screen').innerHTML.indexOf('Used Figma',node('screen').innerHTML.indexOf('readonly'))<node('screen').innerHTML.indexOf('Worked in retail',node('screen').innerHTML.indexOf('readonly')));

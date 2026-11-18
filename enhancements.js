@@ -474,7 +474,7 @@
         ? "internships"
         : ["posts", "create", "experience", "post"].includes(page.name)
           ? "posts"
-          : ["profile", "edit-profile", "favorites", "profile-item", "resume", "career-profile", "full-profile", "premium", "resume-matching", "resume-polish", "company-people", "workspace", "listing"].includes(page.name)
+          : ["profile", "edit-profile", "favorites", "profile-item", "resume", "career-profile", "full-profile", "premium", "premium-plans", "resume-matching", "resume-polish", "company-people", "workspace", "listing"].includes(page.name)
             ? "profile" : "home";
   }
 
@@ -482,7 +482,7 @@
 
   render = function () {
     migrate();
-    if (provider() && me()?.verified && ["home", "reward-ad", "premium", "community", "comparisons", "trial-people", "company-people", "resume-matching", "resume-polish"].includes(route.name)) {
+    if (provider() && me()?.verified && ["home", "reward-ad", "premium", "premium-plans", "community", "comparisons", "trial-people", "company-people", "resume-matching", "resume-polish"].includes(route.name)) {
       route = { name: "internships" };
     }
     if (!provider() && route.name === "trial-people") {
@@ -758,8 +758,8 @@
     return `${heading("Premium Center", "A preview of InternCruise membership.")}
       <section class="card premium-overview">${premiumBadge(me())}
         <h2>${premium ? "Your Premium features" : "Choose your membership"}</h2>
-        <p>${premium ? "Explore the feature previews below." : "Compare the free account and proposed Premium plan."}</p>
-        <p class="muted">Demo only · No payment or recurring subscription. Price to be confirmed.</p>
+        <p>${premium ? "Explore the feature previews below." : "Compare free access and Premium membership."}</p>
+        <p class="muted">Demo only · No payment or recurring subscription.</p>
       </section>
       ${premium ? `<div class="premium-feature-list">
         ${[["Private messaging with companies", "Contact employers beyond the free daily allowance. Messaging students and alumni does not require Premium.", "company-people"],
@@ -769,9 +769,25 @@
         ${xb("Switch to free account · Demo", "premium-demo", "free", "secondary wide")}
       </div>` : `<section class="card premium-plan"><h2>Free account</h2><p class="premium-price">Free</p>
         <p>Browse, compare and save opportunities. Send 5 messages to companies per day; messages to students/alumni do not need Premium.</p><span class="badge">Current plan</span></section>
-        <section class="card premium-plan"><h2>InternCruise Premium</h2><p class="premium-price">Price to be confirmed</p>
-        <p>Includes company messaging beyond the free daily allowance, AI résumé matching for target internships, and Résumé polishing (language and format). Price to be confirmed.</p>
-        ${xb("Try Premium preview · Demo", "premium-demo", "premium", "wide")}</section>`}`;
+        <section class="card premium-plan"><h2>InternCruise Premium</h2><p class="premium-price">From HK$59.9/month</p>
+        <p>Includes company messaging beyond the free daily allowance, AI résumé matching for target internships, and Résumé polishing (language and format).</p>
+        ${xb("View Premium details →", "navigate", "premium-plans", "wide")}</section>`}`;
+  };
+
+  pages["premium-plans"] = () => {
+    if (!me() || provider()) return missingPage();
+    return `${heading("Premium plans", "Choose the duration that works for you.")}
+      <section class="card premium-plan"><span class="badge">Core access · HK$0</span>
+        <h2>Free account</h2><p>Browse listings, discover, compare and save opportunities, and join the community. Includes 5 company messages per day and unrestricted student/alumni messaging.</p></section>
+      <section class="card premium-overview"><h2>Every Premium plan includes</h2>
+        <ul class="premium-benefits"><li>Private messaging with companies beyond the free daily allowance</li><li>AI résumé matching for your target internship and company values</li><li>Résumé polishing for language and format</li></ul></section>
+      <div class="premium-pricing-list">
+        ${[["Monthly", "59.9", "month"], ["Quarterly", "149.9", "quarter"], ["Yearly", "549.9", "year"]].map(([name, price, period]) => `<section class="card premium-plan premium-pricing-option"><h2>${name}</h2><p class="premium-price">HK$${price}<span> / ${period}</span></p><p>All three Premium features included.</p></section>`).join("")}
+      </div>
+      <section class="card premium-promotion"><span class="badge">Launch promotion</span><h2>First 5,000 contributors</h2><p>Receive 1 year of Premium access.</p><p class="muted">Promotion shown for presentation only; this demo does not verify eligibility or redeem offers.</p></section>
+      <section class="card premium-plan"><h2>Explore before subscribing</h2><p>Try all three Premium features in this prototype.</p>
+        ${me().premiumDemo ? xb("View Premium features →", "navigate", "premium", "wide") : xb("Try Premium demo", "premium-demo", "premium", "wide")}
+        <p class="muted">Demo only · No payment or subscription is started. Résumé tools use local rules; no real AI service is connected.</p></section>`;
   };
 
   const resumePreviews = {};
@@ -2648,6 +2664,7 @@
       if (!me() || provider()) return;
       me().premiumDemo = id === "premium";
       persist();
+      if (route.name === "premium-plans") return go("premium");
       return render();
     }
 
