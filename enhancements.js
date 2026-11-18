@@ -530,6 +530,7 @@
     const screen = $("screen");
     const scroll = screen.scrollTop;
     const oldDirty = dirty;
+    const composerHidden = screen.querySelector(".comment-composer")?.hidden;
     const controls = [...screen.querySelectorAll("input, textarea, select")].map(el => ({
       name: el.name, form: el.form?.dataset.form,
       value: el.value, checked: el.checked, type: el.type
@@ -543,6 +544,8 @@
       el.value = saved.value;
       el.checked = saved.checked;
     }
+    const composer = screen.querySelector(".comment-composer");
+    if (composer) composer.hidden = composerHidden;
     dirty = oldDirty;
     screen.scrollTop = scroll;
   }
@@ -1043,6 +1046,7 @@
         "link-button ic-report",
         'aria-label="Report this content"'
       )}
+      ${deleteContentButton(item, kind, parent)}
     </div>`;
   }
 
@@ -1156,12 +1160,12 @@
 
   function commentComposer(kind, parent) {
     const selected = replyingTo && findItem(replyingTo);
-    const matches = selected && selected.kind === kind && selected.parent === parent;
+    const matches = selected && selected.item && selected.kind === kind && selected.parent === parent;
     const label = matches
       ? `Reply to ${authorName(selected.item)}’s comment`
       : "Leave a comment";
 
-    return `<form data-form="x-comment" data-kind="${esc(kind)}"
+    return `<form class="comment-composer" ${matches ? "" : "hidden"} data-form="x-comment" data-kind="${esc(kind)}"
       data-parent="${esc(parent)}" data-dirty>
       <label id="commentLabel">${esc(label)}
         <textarea class="ic-one-line" name="text" rows="1"
@@ -1187,6 +1191,7 @@
       <div>${tagsMarkup(post.tags)}</div>
       ${engagementActions(post, "forum")}
       <h2>Replies (${post.replies.length})</h2>
+      ${xb("Reply", "comment-start")}
       ${threadMarkup(post.replies, "forum-reply", post.id)}
       ${commentComposer("forum-reply", post.id)}`;
   };
@@ -2182,6 +2187,7 @@
           <p>${icon("clock")} ${esc(data.deadline || "Deadline not specified")}</p>
           ${engagementJobButtons(post)}
 
+          ${deleteContentButton(post, "post")}
           <h2>Internship requirements</h2>
           <p class="preserve">${esc(data.requirements || "See the employer’s requirements.")}</p>
           <ul>
@@ -2613,6 +2619,7 @@
     const label = $("commentLabel");
     if (!label) return;
 
+    label.closest("form").hidden = false;
     const textarea = label.querySelector("textarea");
     const first = label.firstChild;
     const title = `Reply to ${authorName(result.item)}’s comment`;
@@ -2816,10 +2823,26 @@
 
     if (name === "report") return reportDialog(id);
     if (name === "reply-to") return targetReply(id);
+    if (name === "comment-start") {
+      replyingTo = null;
+      const label = $("commentLabel");
+      if (!label) return;
+      label.closest("form").hidden = false;
+      label.firstChild.textContent = "Leave a comment";
+      const textarea = label.querySelector("textarea");
+      textarea.focus();
+      textarea.scrollIntoView({ block: "nearest", behavior: "auto" });
+      return;
+    }
 
     if (name === "cancel-reply") {
       replyingTo = null;
       const label = $("commentLabel");
+      if (label) {
+        label.closest("form").reset();
+        label.closest("form").hidden = true;
+        dirty = false;
+      }
       if (label?.firstChild?.nodeType === Node.TEXT_NODE) {
         label.firstChild.textContent = "Leave a comment";
       }

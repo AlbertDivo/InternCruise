@@ -336,6 +336,7 @@ function heading(title, subtitle = "", withBack = true) {
 }
 
 function authorButton(item) {
+  if (item.owner === "deleted") return '<span class="muted">Deleted comment</span>';
   return button(
     authorName(item), "author", actor(item.owner, item.anonymous), "link-button small"
   );
@@ -597,9 +598,61 @@ function ratingPanel(post) {
   </section>`;
 }
 
+function deleteContentButton(item, kind, parent = "") {
+  return item.owner === currentUserId
+    ? button("Delete", "delete-content", `${kind}|${parent}|${item.id}`, "link-button danger") : "";
+}
+
+async function deleteOwnContent(reference) {
+  const [kind, parent, id] = reference.split("|");
+  const post = getPost(parent);
+  const forum = getForum(parent);
+  let items = kind === "post" ? db.posts : kind === "forum" ? db.forums
+    : kind === "review" ? post?.reviews : kind === "forum-reply" ? forum?.replies
+    : kind === "question" ? post?.questions
+    : kind === "question-reply" ? post?.questions.find(q => q.replies.some(r => r.id === id))?.replies : null;
+  const item = items?.find(item => item.id === id);
+  if (!item || item.owner !== currentUserId) return;
+  if (!await mayLeave()) return;
+  const wholePost = kind === "post" || kind === "forum";
+  if (!await ask(wholePost ? "Delete this post and all its comments?" : "Delete your comment? Other people's replies will be kept.", "Delete")) return;
+  if (kind === "question" && item.replies.length) {
+    // Keep the discussion available when its original comment is removed.
+    item.text = "Comment deleted.";
+    item.owner = "deleted";
+    item.anonymous = false;
+  } else {
+    for (const reply of items) if (reply.parent === id) reply.parent = item.parent || null;
+    items.splice(items.indexOf(item), 1);
+  }
+  const removed = new Set([`${kind}:${id}`]);
+  if (wholePost) {
+    for (const r of item.reviews || []) removed.add(`review:${r.id}`);
+    for (const r of item.replies || []) removed.add(`forum-reply:${r.id}`);
+    for (const q of item.questions || []) {
+      removed.add(`question:${q.id}`);
+      for (const r of q.replies) removed.add(`question-reply:${r.id}`);
+    }
+  }
+  for (const values of Object.values(db.favorites || {})) {
+    for (let i = values.length - 1; i >= 0; i--) if (removed.has(values[i])) values.splice(i, 1);
+  }
+  if (kind === "post") for (const key of ["saved", "wishlists", "comparisons"]) {
+    for (const values of Object.values(db[key] || {})) {
+      const index = values.indexOf(id);
+      if (index >= 0) values.splice(index, 1);
+    }
+  }
+  persist();
+  dirty = false;
+  if (wholePost && route.id === id) await go(kind === "post" ? "posts" : "forum", {}, true);
+  else render();
+  tell("Deleted.");
+}
+
 function replyMarkup(reply) {
   return `<div class="reply">
-    ${authorButton(reply)}
+    ${authorButton(reply)} ${deleteContentButton(reply, "question-reply", route.id)}
     <p class="preserve">${esc(reply.text)}</p>
     <small class="muted">${esc(dateLabel(reply.created))}</small>
   </div>`;
@@ -607,7 +660,7 @@ function replyMarkup(reply) {
 
 function questionMarkup(question, post) {
   return `<article class="card">
-    ${authorButton(question)}
+    ${authorButton(question)} ${deleteContentButton(question, "question", post.id)}
     <h3 class="preserve">${esc(question.text)}</h3>
     <span class="badge">${question.resolved ? "Resolved" : "Open question"}</span>
     <div class="thread">${question.replies.map(replyMarkup).join("")}</div>
@@ -615,7 +668,7 @@ function questionMarkup(question, post) {
       ? button(question.resolved ? "Reopen question" : "Mark resolved",
         "resolve-question", question.id) : ""}
     ${!question.resolved ? `
-      <form data-form="question-reply" data-id="${esc(question.id)}" data-dirty>
+      ${button("Reply", "comment-start", `question-reply-${question.id}`)}<form id="question-reply-${esc(question.id)}" class="comment-composer" hidden data-form="question-reply" data-id="${esc(question.id)}" data-dirty>
         ${area("Reply / follow-up", "text", "", true, 2000)}
         ${checkbox("Reply anonymously", "anonymous")}
         <button>Post reply</button>
@@ -635,7 +688,7 @@ function postPage() {
   );
 
   return `${heading(data.title)}
-    ${authorButton(post)}
+    ${authorButton(post)} ${deleteContentButton(post, "post")}
     <p class="muted">${esc(data.company)} · ${esc(data.job)}</p>
     <span class="badge">${post.type === "official" ? "Official listing" : "Verified experience · Demo"}</span>
     ${post.closed ? '<span class="badge">Applications closed</span>' : ""}
@@ -669,7 +722,7 @@ function postPage() {
 
     <h2>Comments & Q&A</h2>
     <p class="muted">Ask a question. The author receives an in-app demo notification.</p>
-    <form data-form="question" data-dirty>
+    ${button("Reply", "comment-start", "question-composer")}<form id="question-composer" class="comment-composer" hidden data-form="question" data-dirty>
       ${area("Your question", "text", "", true, 2000)}
       ${checkbox("Ask anonymously", "anonymous")}
       <button>Post question</button>
@@ -1147,6 +1200,15 @@ document.addEventListener("click", async (event) => {
   const action = target.dataset.action;
   const id = target.dataset.id;
 
+  if (action === "comment-start") {
+    const form = $(id);
+    if (!form) return;
+    form.hidden = false;
+    form.querySelector("textarea").focus();
+    form.scrollIntoView({ block: "nearest", behavior: "auto" });
+    return;
+  }
+  if (action === "delete-content") return deleteOwnContent(id);
   if (action === "back") return back();
   if (action === "entry") return enter();
   if (action === "demo") return enter(id);
